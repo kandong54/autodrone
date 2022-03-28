@@ -10,7 +10,12 @@ To install OpenCV and gRPC:
 sudo apt install libopencv-dev libgrpc++-dev protobuf-compiler-grpc
 ```
 
-To cross complie TFLite, run [rpi4/tools/build_tflite](tools/build_tflite.sh)
+To cross complie TFLite, run [rpi4/tools/build_tflite.sh](tools/build_tflite.sh) on the host computer.
+
+```shell
+sudo apt install libabsl-dev libflatbuffers-dev
+```
+
 
 ## Reference
 - [Build TensorFlow Lite for ARM boards](https://www.tensorflow.org/lite/guide/build_arm)

@@ -11,7 +11,7 @@ CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 # Path to the source directory
 SRC_PATH = src
 # Space-separated pkg-config libraries used by this project
-LIBS = opencv4 grpc++
+LIBS = opencv4 grpc++ tflite
 
 # Build and output paths
 BUILD_PATH = build
