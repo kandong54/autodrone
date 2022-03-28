@@ -1,7 +1,7 @@
 # AutoDrone
 Hello, World!
-## Colab
-- Datasets
-  - [Open Images Dataset V6](https://colab.research.google.com/github/kandong54/autodrone/blob/main/datasets/open_images.ipynb) 
-- Algorithms
-  - [YOLOv5](https://colab.research.google.com/github/kandong54/autodrone/blob/main/algorithms/yolov5.ipynb) 
+## Model
+- Datasets: [Open Images Dataset V6](model/open_images.ipynb) 
+- Algorithms: [YOLOv5](model/yolov5.ipynb) 
+## Raspberry Pi 4 Model B
+[README](rpi4/README.md) 

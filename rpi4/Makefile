@@ -11,9 +11,7 @@ CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 # Path to the source directory
 SRC_PATH = src
 # Space-separated pkg-config libraries used by this project
-# opencv4: sudo apt install libopencv-dev
-# grpc: https://github.com/grpc/grpc/blob/master/test/distrib/cpp/run_distrib_test_cmake_aarch64_cross.sh
-LIBS = opencv4
+LIBS = opencv4 grpc++
 
 # Build and output paths
 BUILD_PATH = build
