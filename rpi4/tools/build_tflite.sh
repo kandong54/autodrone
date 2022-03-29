@@ -13,7 +13,7 @@ git clone -b "v$VERSION" --depth 1 --shallow-submodules https://github.com/tenso
 pushd $SRC_PATH
 
 # Build ARM binary
-bazel clean
+# bazel clean
 bazel build --config=elinux_aarch64 -c opt //tensorflow/lite:libtensorflowlite.so # C++ library
 # bazel build --config=elinux_aarch64 -c opt //tensorflow/lite/c:libtensorflowlite_c.so # C library
 
