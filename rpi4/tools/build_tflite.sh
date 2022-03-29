@@ -60,7 +60,7 @@ Version: $VERSION
 Section: devel 
 Priority: optional 
 Architecture: arm64
-Maintainer: TensorFlow Lite
+Maintainer: TensorFlow
 Description: Tensorflow Lite - Library and Headers.
 EOF
 
