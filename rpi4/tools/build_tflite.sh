@@ -6,8 +6,7 @@ DEB_NAME="libtensorflowlite-dev_$VERSION-1_arm64"
 BUILD_PATH="$(pwd)/$DEB_NAME"
 
 # Remove existed files
-rm -rf $BUILD_PATH
-rm -rf $SRC_PATH
+rm -rf $BUILD_PATH $SRC_PATH $DEB_NAME.deb
 
 # Clone TensorFlow repository
 git clone -b "v$VERSION" --depth 1 --shallow-submodules https://github.com/tensorflow/tensorflow "$SRC_PATH"
