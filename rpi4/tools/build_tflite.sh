@@ -15,13 +15,13 @@ pushd $SRC_PATH
 # Build ARM binary
 bazel clean
 bazel build --config=elinux_aarch64 -c opt //tensorflow/lite:libtensorflowlite.so # C++ library
-bazel build --config=elinux_aarch64 -c opt //tensorflow/lite/c:libtensorflowlite_c.so # C library
+# bazel build --config=elinux_aarch64 -c opt //tensorflow/lite/c:libtensorflowlite_c.so # C library
 
 # Copy Libraries
 LIB_PATH="$BUILD_PATH/usr/lib/aarch64-linux-gnu"
 mkdir -p $LIB_PATH
 cp bazel-bin/tensorflow/lite/libtensorflowlite.so $LIB_PATH
-cp bazel-bin/tensorflow/lite/c/libtensorflowlite_c.so $LIB_PATH
+# cp bazel-bin/tensorflow/lite/c/libtensorflowlite_c.so $LIB_PATH
 
 # Extract All Header Files
 INC_PATH="$BUILD_PATH/usr/include"
