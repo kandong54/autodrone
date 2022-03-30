@@ -12,7 +12,7 @@ CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 SRC_PATH = src
 PROTO_PATH = protos
 # Space-separated pkg-config libraries used by this project
-LIBS = opencv4 grpc++ tflite
+LIBS = opencv4 protobuf grpc++ tflite 
 
 # Build and output paths
 BUILD_PATH = build
@@ -41,7 +41,7 @@ DEPS = $(OBJECTS:.o=.d)
 
 # Main rule, checks the executable and symlinks to the output
 .PHONY: all
-all: dirs $(BIN_PATH)/$(BIN_NAME)
+all: dirs proto $(BIN_PATH)/$(BIN_NAME)
 
 # Link the executable
 $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
@@ -62,13 +62,14 @@ dirs:
 
 # Generating server code
 PROTOS = $(wildcard $(PROTO_PATH)/*.proto)
-GRPCPB = $(PROTOS:$(PROTO_PATH)/%.proto=$(SRC_PATH)/%.grpc.pb.cc)
+GRPCPB = $(PROTOS:$(PROTO_PATH)/%.proto=$(SRC_PATH)/%.pb.cc)
 .PHONY: proto
 proto: $(GRPCPB)
 
-$(SRC_PATH)/%.grpc.pb.cc: $(PROTO_PATH)/%.proto
+$(SRC_PATH)/%.pb.cc: $(PROTO_PATH)/%.proto
 	@echo "Generating: $<"
 	protoc -I $(PROTO_PATH) --grpc_out=$(SRC_PATH) --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $<
+	protoc -I $(PROTO_PATH) --cpp_out=$(SRC_PATH) $<
 
 # Removes all build files
 .PHONY: clean
