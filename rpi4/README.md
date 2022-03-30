@@ -29,7 +29,7 @@ envoy -c envoy.yaml
 
 Currently, Envoy is hosted on the Raspberry Pi and will be hosted on a server if possible.
 
-The prebuilt Envoy >= v1.17 doesn't work on RPi because of TCMalloc : envoyproxy/envoy#15235.
+The prebuilt Envoy >= v1.17 doesn't work on RPi because of TCMalloc: envoyproxy/envoy#15235.
 
 ## Reference
 - [Build TensorFlow Lite for ARM boards](https://www.tensorflow.org/lite/guide/build_arm)
