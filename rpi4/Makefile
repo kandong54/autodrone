@@ -10,6 +10,7 @@ SRC_EXT = cc
 CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 # Path to the source directory
 SRC_PATH = src
+PROTO_PATH = protos
 # Space-separated pkg-config libraries used by this project
 LIBS = opencv4 grpc++ tflite
 
@@ -59,8 +60,21 @@ dirs:
 	@mkdir -p $(dir $(OBJECTS))
 	@mkdir -p $(BIN_PATH)
 
+# Generating server code
+PROTOS = $(wildcard $(PROTO_PATH)/*.proto)
+GRPCPB = $(PROTOS:$(PROTO_PATH)/%.proto=$(SRC_PATH)/%.grpc.pb.cc)
+.PHONY: proto
+proto: $(GRPCPB)
+
+$(SRC_PATH)/%.grpc.pb.cc: $(PROTO_PATH)/%.proto
+	@echo "Generating: $<"
+	protoc -I $(PROTO_PATH) --grpc_out=$(SRC_PATH) --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $<
+
 # Removes all build files
 .PHONY: clean
 clean: 
 	@echo "Deleting directories"
 	rm -rf $(BUILD_PATH) $(BIN_PATH)
+
+# Add dependency files, if they exist
+-include $(DEPS)

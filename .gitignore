@@ -45,3 +45,7 @@
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+# gRPC
+*.grpc.pb.cc
+*.grpc.pb.h
