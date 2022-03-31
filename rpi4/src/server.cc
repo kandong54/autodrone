@@ -7,6 +7,7 @@
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
+#include <spdlog/spdlog.h>
 
 #include "drone.grpc.pb.h"
 
@@ -49,8 +50,7 @@ namespace rpi4
     builder.RegisterService(&service);
     // Finally assemble the server.
     std::unique_ptr<Server> server(builder.BuildAndStart());
-    std::cout << "Server listening on " << server_address << std::endl;
-
+    spdlog::warn("Server listening on {}", server_address);
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
     server->Wait();

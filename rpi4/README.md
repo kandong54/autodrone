@@ -5,10 +5,11 @@ Hello, World!
 - OpenCV
 - gRPC
 - TFLite
+- spdlog
 
-To install OpenCV and gRPC:
+To install OpenCV, gRPC, and spdlog:
 ```shell
-sudo apt install libopencv-dev libgrpc++-dev protobuf-compiler-grpc
+sudo apt install libopencv-dev libgrpc++-dev protobuf-compiler-grpc libspdlog-dev
 ```
 
 To cross complie TFLite, run [build_tflite.sh](tools/build_tflite.sh) on the host computer.

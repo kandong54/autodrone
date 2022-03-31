@@ -6,6 +6,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgcodecs.hpp>
+#include <spdlog/spdlog.h>
 
 namespace rpi4
 {
@@ -18,19 +19,24 @@ namespace rpi4
     // check if we succeeded
     if (!cap_.isOpened())
     {
-      std::cerr << "ERROR! Unable to open camera\n";
+      spdlog::critical("Unable to open camera");
       //return -1;
     }
-    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
-    cap_.set(cv::CAP_PROP_FRAME_WIDTH, 960);
-    // reduce buffer size so that we can read the most latest one
-    cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
+    else
+    {
+      cap_.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
+      cap_.set(cv::CAP_PROP_FRAME_WIDTH, 960);
+      // reduce buffer size so that we can read the most latest one
+      cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
+    }
   }
 
   bool Camera::CaptureImage()
   {
-    cv::Mat frame;
+    if (!cap_.isOpened())
+      return false;
 
+    cv::Mat frame;
     // wait for a new frame from camera and store it into 'frame'
     // clear buffer
     // TODO: any good solution? How to read the most latest one?
@@ -39,7 +45,7 @@ namespace rpi4
     // check if we succeeded
     if (frame.empty())
     {
-      std::cerr << "ERROR! blank frame grabbed" << std::endl;
+      spdlog::error("blank frame grabbed");
       return false;
     }
     // TODO: add resize method.
@@ -52,7 +58,7 @@ namespace rpi4
     std::strftime(filename, sizeof(filename), "%H%M%S.jpg", std::localtime(&t_c));
     if (!cv::imwrite(filename, croppedImage))
     {
-      std::cerr << "ERROR! Unable to save image" << std::endl;
+      spdlog::error("Unable to save image");
       return false;
     }
     std::cout << filename << std::endl;

@@ -10,7 +10,7 @@ SRC_EXT = cc
 SRC_PATH = src
 PROTO_PATH = protos
 # Space-separated pkg-config libraries used by this project
-LIBS = opencv4 protobuf grpc++ tflite 
+LIBS = opencv4 protobuf grpc++ tflite spdlog
 # General compiler flags
 CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 # Add additional include paths
