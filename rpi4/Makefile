@@ -6,21 +6,21 @@ BIN_NAME = main.out
 CXX ?= g++
 # Extension of source files used in the project
 SRC_EXT = cc
-# General compiler flags
-CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 # Path to the source directory
 SRC_PATH = src
 PROTO_PATH = protos
 # Space-separated pkg-config libraries used by this project
 LIBS = opencv4 protobuf grpc++ tflite 
+# General compiler flags
+CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
+# Add additional include paths
+INCLUDES = -I $(SRC_PATH)
 
 # Build and output paths
 BUILD_PATH = build
 BIN_PATH = bin
 
 # Append pkg-config specific libraries if need be
-# export PKG_CONFIG_PATH=/usr/local/grpc/lib/pkgconfig
-# export PATH=$PATH:/usr/local/grpc/bin
 ifneq ($(LIBS),)
 	CXXFLAGS += $(shell pkg-config --cflags $(LIBS))
 	LDFLAGS += $(shell pkg-config --libs $(LIBS))
@@ -48,10 +48,13 @@ $(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
 	@echo "Linking: $@"
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
+# Add dependency files, if they exist
+-include $(DEPS)
+
 # Source file rules
 $(BUILD_PATH)/%.o: $(SRC_PATH)/%.$(SRC_EXT)
 	@echo "Compiling: $< -> $@"
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -MP -MMD -c $< -o $@
 
 # Create the directories used in the build
 .PHONY: dirs
@@ -76,6 +79,3 @@ $(SRC_PATH)/%.pb.cc: $(PROTO_PATH)/%.proto
 clean: 
 	@echo "Deleting directories"
 	rm -rf $(BUILD_PATH) $(BIN_PATH)
-
-# Add dependency files, if they exist
--include $(DEPS)

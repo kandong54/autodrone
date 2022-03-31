@@ -1,6 +1,10 @@
 #include <iostream>
 
-int main()
+#include "camera.h"
+#include "server.h"
+
+int main(int argc, char *argv[])
 {
-    std::cout << "Hello World" << std::endl;
+  std::cout << "Hello World" << std::endl;
+  rpi4::RunServer();
 }

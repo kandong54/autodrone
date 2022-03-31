@@ -69,5 +69,7 @@
             "binaryPath": "/home/pi/autodrone/rpi4/bin/main.out",
             "binaryArgs": []
         }
-    ]
+    ],
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2
 }
