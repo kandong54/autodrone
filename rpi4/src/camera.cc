@@ -19,7 +19,7 @@ namespace rpi4
     // check if we succeeded
     if (!cap_.isOpened())
     {
-      spdlog::critical("Unable to open camera");
+      SPDLOG_CRITICAL("Unable to open camera");
       //return -1;
     }
     else
@@ -45,7 +45,7 @@ namespace rpi4
     // check if we succeeded
     if (frame.empty())
     {
-      spdlog::error("blank frame grabbed");
+      SPDLOG_ERROR("blank frame grabbed");
       return false;
     }
     // TODO: add resize method.
@@ -58,7 +58,7 @@ namespace rpi4
     std::strftime(filename, sizeof(filename), "%H%M%S.jpg", std::localtime(&t_c));
     if (!cv::imwrite(filename, croppedImage))
     {
-      spdlog::error("Unable to save image");
+      SPDLOG_ERROR("Unable to save image");
       return false;
     }
     std::cout << filename << std::endl;

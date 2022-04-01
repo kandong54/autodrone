@@ -1,19 +1,24 @@
 # Raspberry Pi 4 Model B
+
 Hello, World!
 
 ## Dependencies
+
 - OpenCV
 - gRPC
 - TFLite
 - spdlog
 
 To install OpenCV, gRPC, and spdlog:
+
 ```shell
 sudo apt install libopencv-dev libgrpc++-dev protobuf-compiler-grpc libspdlog-dev
 ```
 
 To cross complie TFLite, run [build_tflite.sh](tools/build_tflite.sh) on the host computer.
+
 To install its dependencies:
+
 ```shell
 sudo apt install libabsl-dev libflatbuffers-dev
 ```

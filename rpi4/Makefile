@@ -32,10 +32,15 @@ endif
 SOURCES = $(shell find $(SRC_PATH) -name '*.$(SRC_EXT)' -printf '%T@\t%p\n' \
 					| sort -k 1nr | cut -f2-)
 
+# gRPC code
+PROTOS = $(wildcard $(PROTO_PATH)/*.proto)
+GRPCPB = $(PROTOS:$(PROTO_PATH)/%.proto=$(SRC_PATH)/%.pb.cc)
+GRPCPB := $(GRPCPB) $(GRPCPB:%.pb.cc=%.grpc.pb.cc)
 
 # Set the object file names, with the source directory stripped
 # from the path, and the build path prepended in its place
 OBJECTS = $(SOURCES:$(SRC_PATH)/%.$(SRC_EXT)=$(BUILD_PATH)/%.o)
+GRPC_OBJECTS = $(GRPCPB:$(SRC_PATH)/%.$(SRC_EXT)=$(BUILD_PATH)/%.o)
 # Set the dependency files that will be used to add header dependencies
 DEPS = $(OBJECTS:.o=.d)
 
@@ -44,7 +49,7 @@ DEPS = $(OBJECTS:.o=.d)
 all: dirs proto $(BIN_PATH)/$(BIN_NAME)
 
 # Link the executable
-$(BIN_PATH)/$(BIN_NAME): $(OBJECTS)
+$(BIN_PATH)/$(BIN_NAME): $(OBJECTS) $(GRPC_OBJECTS)
 	@echo "Linking: $@"
 	$(CXX) $(OBJECTS) $(LDFLAGS) -o $@
 
@@ -64,18 +69,21 @@ dirs:
 	@mkdir -p $(BIN_PATH)
 
 # Generating server code
-PROTOS = $(wildcard $(PROTO_PATH)/*.proto)
-GRPCPB = $(PROTOS:$(PROTO_PATH)/%.proto=$(SRC_PATH)/%.pb.cc)
 .PHONY: proto
 proto: $(GRPCPB)
 
-$(SRC_PATH)/%.pb.cc: $(PROTO_PATH)/%.proto
-	@echo "Generating: $<"
+$(SRC_PATH)/%.grpc.pb.cc: $(PROTO_PATH)/%.proto
+	@echo "Generating: $< -> $@"
 	protoc -I $(PROTO_PATH) --grpc_out=$(SRC_PATH) --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $<
+
+$(SRC_PATH)/%.pb.cc: $(PROTO_PATH)/%.proto
+	@echo "Generating: $< -> $@"
 	protoc -I $(PROTO_PATH) --cpp_out=$(SRC_PATH) $<
 
 # Removes all build files
 .PHONY: clean
-clean: 
+clean:
 	@echo "Deleting directories"
 	rm -rf $(BUILD_PATH) $(BIN_PATH)
+	@echo "Deleting generated gRPC code"
+	rm -rf $(SRC_PATH)/*.pb.cc $(SRC_PATH)/*.pb.h

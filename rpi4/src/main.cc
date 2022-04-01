@@ -7,6 +7,6 @@
 
 int main(int argc, char *argv[])
 {
-  spdlog::info("Hello World");
+  SPDLOG_INFO("Hello World");
   rpi4::RunServer();
 }
