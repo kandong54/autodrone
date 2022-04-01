@@ -25,17 +25,19 @@ sudo apt install libabsl-dev libflatbuffers-dev
 
 ## Server
 
-Due to browser limitations, gRPC-web needs a special proxy to connect to gRPC services; by default, gRPC-web uses [Envoy](https://www.envoyproxy.io/).
-
-To extract prebuilt Envoy from Docker images, run [extract_envoy.sh](tools/extract_envoy.sh). To run Envoy with the [config](tools/envoy.yaml):
+Due to browser limitations, gRPC-web needs a special proxy to connect to gRPC services; by default, gRPC-web uses [Envoy](https://www.envoyproxy.io/). To run Envoy with the [config](tools/envoy.yaml):
 
 ```shell
 envoy -c envoy.yaml
 ```
 
-Currently, Envoy is hosted on the Raspberry Pi and will be hosted on a server if possible.
+Because of the firewall, Envoy is now hosted on a public server instead of the Raspberry Pi. Server and Raspberry Pi transfer data via [WireGuard](https://www.wireguard.com/). And the data transfers between users and server is encrypted by SSL/TLS. 
 
-The prebuilt Envoy >= v1.17 doesn't work on RPi because of TCMalloc: envoyproxy/envoy#15235.
+```
+RPi <--- WireGuard ---> Server(Envoy) <--- SSL/TLS ---> Users
+```
+
+Envoy will be hosted on the Raspberry Pi if it has a public IP without firewall. The script [extract_envoy.sh](tools/extract_envoy.sh) can extract the prebuilt arm64 Envoy from Docker images. And Envoy >= v1.17 doesn't work on RPi because of TCMalloc: envoyproxy/envoy#15235.
 
 ## Reference
 - [Build TensorFlow Lite for ARM boards](https://www.tensorflow.org/lite/guide/build_arm)
