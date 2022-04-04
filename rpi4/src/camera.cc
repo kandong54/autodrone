@@ -1,7 +1,6 @@
 #include "camera.h"
 
 #include <iostream>
-#include <ctime>
 
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
@@ -37,7 +36,6 @@ namespace rpi4
       return false;
 
     cv::Mat frame;
-    // wait for a new frame from camera and store it into 'frame'
     // clear buffer
     // TODO: any good solution? How to read the most latest one?
     cap_.grab();
@@ -52,16 +50,7 @@ namespace rpi4
     // crop image: 960*720 -> 640*640
     cv::Rect myROI(160, 40, 800, 680);
     cv::Mat croppedImage = frame(myROI);
-    // save image
-    char filename[100];
-    std::time_t t_c = std::time(nullptr);
-    std::strftime(filename, sizeof(filename), "%H%M%S.jpg", std::localtime(&t_c));
-    if (!cv::imwrite(filename, croppedImage))
-    {
-      SPDLOG_ERROR("Unable to save image");
-      return false;
-    }
-    std::cout << filename << std::endl;
+
     return true;
   }
 } // namespace rpi4
