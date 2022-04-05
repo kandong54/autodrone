@@ -1,0 +1,7 @@
+# Make
+build
+bin
+
+# gRPC
+src/*.pb.cc
+src/*.pb.h
