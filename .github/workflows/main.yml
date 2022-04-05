@@ -20,13 +20,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 'lts/*'
-          cache: 'npm'
-          cache-dependency-path: web-app/package-lock.json
 
       - name: Build
         run: |
           cd web-app
-          npm install --silent
           npm install -g @angular/cli
           ng build --cross-origin anonymous --base-href "/autodrone/"
 
