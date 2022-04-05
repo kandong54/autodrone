@@ -5,6 +5,9 @@
     {
       "type": "npm",
       "script": "start",
+      "options": {
+        "cwd": "${workspaceFolder}/web-app"
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -23,6 +26,9 @@
     {
       "type": "npm",
       "script": "test",
+      "options": {
+        "cwd": "${workspaceFolder}/web-app"
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
