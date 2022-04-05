@@ -15,7 +15,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
+        
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      
       - name: Setup Node.js environment
         uses: actions/setup-node@v3
         with:
@@ -28,11 +36,11 @@ jobs:
           cd web-app
           npm install --silent
           npm install -g @angular/cli
-          ng build --cross-origin anonymous --base-href "/autodrone/"
+          ng build --base-href "/autodrone/"
 
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./web-app/dist/web-app
+          publish_dir: web-app/dist/web-app
