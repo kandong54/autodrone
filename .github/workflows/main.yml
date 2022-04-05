@@ -27,6 +27,7 @@ jobs:
         run: |
           cd web-app
           npm install --silent
+          npm install -g @angular/cli
           ng build --cross-origin anonymous --base-href "/autodrone/"
 
 
