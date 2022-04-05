@@ -43,6 +43,7 @@ jobs:
         with:
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
           external_repository: ${{ github.repository_owner }}/${{ github.repository_owner }}.github.io
+          publish_branch: main
           publish_dir: web-app/dist/web-app
           destination_dir: drone
           enable_jekyll: true
