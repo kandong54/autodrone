@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        
+
       - name: Cache
         uses: actions/cache@v3
         with:
@@ -23,19 +23,25 @@ jobs:
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
-      
+
       - name: Setup Node.js environment
         uses: actions/setup-node@v3
         with:
           node-version: 'lts/*'
-          
-      - name: Build
+
+      - name: Prepare
         run: |
           cd web-app
           npm ci
           npm install -g @angular/cli
-          ng build --base-href "/drone/"
+          ./tools/install_protoc.sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      - name: Build
+        run: |
+          cd web-app
+          npm run proto
+          npm run build --base-href "/drone/"
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
