@@ -1,0 +1,28 @@
+<form class="centered">
+
+  <!-- <h3>Drone:</h3> -->
+
+  <mat-form-field appearance="fill" class="column">
+    <mat-label>Protocol</mat-label>
+    <mat-select [(value)]="hostname.protocol" disabled="true">
+      <mat-option value="http://">HTTP</mat-option>
+      <mat-option value="https://">HTTPS</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field #idAddress appearance="fill" class="column">
+    <mat-label>Address</mat-label>
+    <input matInput [value]="hostname.address">
+  </mat-form-field>
+
+  <mat-form-field appearance="fill" class="small-width">
+    <mat-label>Port</mat-label>
+    <input matInput type="number" [value]="hostname.port">
+  </mat-form-field>
+
+  <button mat-fab color="primary" class="top-align" (click)="onSubmit()" type="button"
+    aria-label="Connect drone button with a send icon">
+    <mat-icon>send</mat-icon>
+  </button>
+
+</form>

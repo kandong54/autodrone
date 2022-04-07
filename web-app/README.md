@@ -7,3 +7,7 @@ This project was generated with [Angular CLI](https://github.com/angular/angular
 Wire Format Mode is grpcwebtext to support server streaming calls.
 
 To install Protocol Buffer Compiler, run [install_protoc.sh](tools/install_protoc.sh).
+
+## Angular Material
+
+https://github.com/angular/material.angular.io
