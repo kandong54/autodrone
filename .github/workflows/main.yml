@@ -41,7 +41,7 @@ jobs:
         run: |
           cd web-app
           npm run proto
-          npm run build --base-href "/drone/"
+          ng build --base-href "/drone/"
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
