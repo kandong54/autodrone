@@ -86,7 +86,7 @@ static_resources:
               domains: ["*"]
               routes:
               - match: { prefix: "/" }
-                redirect: { host_redirect: "kandong54.github.io", path_redirect: "/autodrone/", strip_query: “true” }
+                redirect: { host_redirect: "kandong54.github.io", path_redirect: "/drone/", strip_query: “true” }
           http_filters:
           - name: envoy.filters.http.router
             typed_config:
