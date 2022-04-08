@@ -1,0 +1,14 @@
+@use '@angular/material' as mat
+
+@use 'sass:map'
+@use './app/page-not-found/page-not-found-theme'
+
+// Styles for the docs app that are based on the current theme.
+@mixin theme($theme)
+  $primary: map.get($theme, primary)
+  $accent: map.get($theme, accent)
+  $warn: map.get($theme, warn)
+  $background: map.get($theme, background)
+  $foreground: map.get($theme, foreground)
+
+  @include page-not-found-theme.theme($theme)
