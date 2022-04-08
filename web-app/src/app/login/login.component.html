@@ -1,30 +1,44 @@
-<mat-card class="center padding">
+<mat-card class="center">
 
   <mat-card-title>Connect</mat-card-title>
-  <mat-card-subtitle>Start</mat-card-subtitle>
-  <mat-card-content>
-    <mat-form-field appearance="fill" class="column">
+  <mat-card-subtitle>Server</mat-card-subtitle>
+  <mat-card-content class="margin-bottom">
+    <mat-form-field appearance="fill" class="full-width">
       <mat-label>Protocol</mat-label>
-      <mat-select [(value)]="hostname.protocol" disabled="true">
+      <mat-select [(value)]="hostname.protocol">
         <mat-option value="http://">HTTP</mat-option>
         <mat-option value="https://">HTTPS</mat-option>
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field #idAddress appearance="fill" class="column">
-      <mat-label>Address</mat-label>
-      <input matInput [value]="hostname.address">
+    <table class="column" cellspacing="0">
+      <tr>
+        <td>
+          <mat-form-field appearance="fill" class="middle-width">
+            <mat-label>Address</mat-label>
+            <input matInput [value]="hostname.address">
+          </mat-form-field>
+        </td>
+        <td>:</td>
+        <td>
+          <mat-form-field appearance="fill" class="small-width">
+            <mat-label>Port</mat-label>
+            <input matInput type="number" step="0" [value]="hostname.port">
+          </mat-form-field>
+        </td>
+      </tr>
+    </table>
+
+    <mat-form-field appearance="fill" class="full-width">
+      <mat-label>Password</mat-label>
+      <input matInput type="password" [value]="hostname.port">
     </mat-form-field>
-
-    <mat-form-field appearance="fill" class="small-width">
-      <mat-label>Port</mat-label>
-      <input matInput type="number" [value]="hostname.port">
-    </mat-form-field>
-
-    <button mat-fab color="primary" class="top-align" (click)="onSubmit()" type="button"
-      aria-label="Connect drone button with a send icon">
-      <mat-icon>send</mat-icon>
-    </button>
-
   </mat-card-content>
+
+  <!-- <mat-divider inset></mat-divider> -->
+
+  <mat-card-actions align="end" class="padding">
+    <button mat-stroked-button (click)="onSubmit()" type="button">Connect</button>
+  </mat-card-actions>
+
 </mat-card>

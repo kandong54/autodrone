@@ -4,9 +4,10 @@ class Hostname {
   protocol: string = "https://";
   address: string = "127.0.0.1";
   port: number = 10000;
+  password: string = "admin";
 
   toString(): string {
-    return `${this.protocol}${this.address}:${this.port}`;
+    return `${this.protocol}${this.address}:${this.port}@${this.password}`;
   }
 }
 

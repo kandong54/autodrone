@@ -2,6 +2,7 @@
 
 @use 'sass:map'
 @use './app/page-not-found/page-not-found-theme'
+@use './app/login/login-theme'
 
 // Styles for the docs app that are based on the current theme.
 @mixin theme($theme)
@@ -12,3 +13,4 @@
   $foreground: map.get($theme, foreground)
 
   @include page-not-found-theme.theme($theme)
+  @include login-theme.theme($theme)
