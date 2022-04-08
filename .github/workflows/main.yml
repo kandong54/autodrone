@@ -42,6 +42,7 @@ jobs:
           cd web-app
           npm run proto
           ng build --base-href "/drone/"
+          cp dist/web-app/index.html dist/web-app/404.html
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
