@@ -6,7 +6,7 @@ const routes: Routes = [
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: 'login', component: LoginComponent },
   { path: '404.html', loadChildren: () => import('./page-not-found/page-not-found.module').then(m => m.PageNotFoundModule) },
-  { path: '**', redirectTo: '/404' },
+  { path: '**', redirectTo: '/404.html' },
 ];
 
 @NgModule({
