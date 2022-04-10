@@ -1,5 +1,5 @@
 <form #loginForm=ngForm (ngSubmit)="onSubmit()">
-  <mat-card class="center">
+  <mat-card class="center" [style.filter]="'blur(' + +submitted + 'px)'">
     <mat-card-title>Connect</mat-card-title>
     <mat-card-subtitle>Drone</mat-card-subtitle>
 
@@ -7,7 +7,7 @@
 
       <mat-form-field appearance="fill" class="full-width">
         <mat-label>Protocol</mat-label>
-        <mat-select [(value)]="hostname.protocol">
+        <mat-select [(ngModel)]="server.protocol" name="protocol">
           <mat-option value="http://">HTTP</mat-option>
           <mat-option value="https://">HTTPS</mat-option>
         </mat-select>
@@ -18,14 +18,14 @@
           <td>
             <mat-form-field appearance="fill" class="middle-width">
               <mat-label>Address</mat-label>
-              <input matInput [value]="hostname.address">
+              <input matInput [(ngModel)]="server.address" name="address">
             </mat-form-field>
           </td>
           <td>:</td>
           <td>
             <mat-form-field appearance="fill" class="small-width">
               <mat-label>Port</mat-label>
-              <input matInput type="number" step="0" [value]="hostname.port">
+              <input matInput type="number" step="0" [(ngModel)]="server.port" name="port">
             </mat-form-field>
           </td>
         </tr>
@@ -33,7 +33,7 @@
 
       <mat-form-field appearance="fill" class="full-width">
         <mat-label>Password</mat-label>
-        <input matInput type="password" [value]="hostname.port">
+        <input matInput type="password" [(ngModel)]="server.password" name="password">
       </mat-form-field>
     </mat-card-content>
 
@@ -45,3 +45,7 @@
 
   </mat-card>
 </form>
+
+<div class="center" [hidden]="!submitted">
+  <mat-spinner></mat-spinner>
+</div>
