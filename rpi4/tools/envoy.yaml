@@ -31,6 +31,9 @@ static_resources:
                   timeout: 0s
                   max_stream_duration:
                     grpc_timeout_header_max: 0s
+              - match: { prefix: "/" }
+                route:
+                  cluster: dummy_service
               cors:
                 allow_origin_string_match:
                 - prefix: "*"
@@ -90,7 +93,7 @@ static_resources:
               domains: ["*"]
               routes:
               - match: { prefix: "/" }
-                redirect: { host_redirect: "kandong54.github.io", path_redirect: "/drone/", strip_query: “true” }
+                redirect: { host_redirect: "kandong.dev", path_redirect: "/drone/", strip_query: “true” }
           http_filters:
           - name: envoy.filters.http.router
             typed_config:
@@ -120,3 +123,17 @@ static_resources:
                   socket_address:
                     address: 127.0.0.1
                     port_value: 9090
+  - name: dummy_service
+    connect_timeout: 0.001s
+    type: logical_dns
+    http2_protocol_options: {}
+    lb_policy: round_robin
+    load_assignment:
+      cluster_name: cluster_0
+      endpoints:
+        - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: 127.0.0.1
+                    port_value: 9091

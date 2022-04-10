@@ -29,6 +29,7 @@ namespace rpi4
       Status SayHello(ServerContext *context, const HelloRequest *request,
                       HelloReply *reply) override
       {
+        SPDLOG_WARN("SayHello: {}", request->name());
         std::string prefix("Hello ");
         reply->set_message(prefix + request->name());
         return Status::OK;
