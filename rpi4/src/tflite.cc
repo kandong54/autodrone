@@ -21,6 +21,7 @@ namespace rpi4
     // Init parameter
     model_path_ = "./bin/best-int8.tflite";
     threshold_ = 0.5;
+    lock_ = std::unique_lock<std::mutex>(mutex);
   }
 
   TFLite::~TFLite()
@@ -83,7 +84,7 @@ namespace rpi4
     // [xmin, ymin, xmax, ymax, confidence, class]
     TfLiteIntArray *output_dims = output_tensor->dims;
     output_nums_ = output_dims->data[1];
-    prediction_.reserve(output_dims->data[1] * output_dims->data[2]);
+    prediction.reserve(output_dims->data[1] * output_dims->data[2]);
     // SetNumThreads
     unsigned int threads_num = std::thread::hardware_concurrency();
     interpreter_->SetNumThreads(threads_num);
@@ -104,18 +105,6 @@ namespace rpi4
   }
   namespace
   {
-    // [xmin, ymin, xmax, ymax, confidence, class]
-    enum OutputArray
-    {
-      kXmin = 0,
-      kYmin = 1,
-      kXmax = 2,
-      kYmax = 3,
-      kConfidence = 4,
-      kClass = 5,
-      kOutputNum = 6
-    };
-
     template <class T>
     void AddPrediction(std::unique_ptr<tflite::Interpreter> const &interpreter, std::vector<float> &prediction, float threshold, int output_nums)
     {
@@ -185,7 +174,9 @@ namespace rpi4
     SPDLOG_TRACE("Invoke");
     interpreter_->Invoke();
     SPDLOG_TRACE("Output");
-    prediction_.clear();
+    lock_.lock();
+    prediction.clear();
+    // TODO: width and height
     // [1, 25200, 6]
     // [xmin, ymin, xmax, ymax, confidence, class]
     if (is_quantization_)
@@ -198,7 +189,7 @@ namespace rpi4
         {
           for (size_t j = 0; j < kOutputNum; j++)
           {
-            prediction_.push_back((static_cast<float>(output_tensor_ptr[i * kOutputNum + j]) - output_quant_zero_point_) * output_quant_scale_);
+            prediction.push_back((static_cast<float>(output_tensor_ptr[i * kOutputNum + j]) - output_quant_zero_point_) * output_quant_scale_);
           }
         }
       }
@@ -209,17 +200,17 @@ namespace rpi4
       {
       case kTfLiteUInt8:
       {
-        AddPrediction<unsigned char>(interpreter_, prediction_, threshold_, output_nums_);
+        AddPrediction<unsigned char>(interpreter_, prediction, threshold_, output_nums_);
         break;
       }
       case kTfLiteFloat32:
       {
-        AddPrediction<float>(interpreter_, prediction_, threshold_, output_nums_);
+        AddPrediction<float>(interpreter_, prediction, threshold_, output_nums_);
         break;
       }
       // case kTfLiteFloat16:
       // {
-      //   AddPrediction<TfLiteFloat16>(interpreter_, prediction_, threshold_, output_nums_);
+      //   AddPrediction<TfLiteFloat16>(interpreter_, prediction, threshold_, output_nums_);
       //   break;
       // }
       default:
@@ -230,8 +221,8 @@ namespace rpi4
       }
       }
     }
-
-    SPDLOG_DEBUG("Total: {}", prediction_.size() / kOutputNum);
+    lock_.unlock();
+    SPDLOG_DEBUG("Total: {}", prediction.size() / kOutputNum);
 
     return true;
   }

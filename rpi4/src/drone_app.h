@@ -3,23 +3,28 @@
 
 #include <memory>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #include <opencv2/core.hpp>
 
+#include "camera.h"
+#include "tflite.h"
+
 namespace rpi4
 {
-  class Camera;
-  class TFLite;
-
   class DroneApp
   {
-  private: 
+  private:
     std::unique_ptr<std::thread> thread_;
 
   public:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<TFLite> tflite;
     cv::Mat frame;
+    std::mutex mutex_1;
+    std::mutex mutex_2;
+    std::condition_variable cv;
 
   private:
     void Run();

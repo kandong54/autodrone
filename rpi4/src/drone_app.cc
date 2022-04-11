@@ -1,8 +1,6 @@
 #include "drone_app.h"
 
 #include "log.h"
-#include "camera.h"
-#include "tflite.h"
 
 namespace rpi4
 {
@@ -25,6 +23,10 @@ namespace rpi4
 
   void DroneApp::Run()
   {
+    std::unique_lock drone_1_lock(mutex_1);
+    std::unique_lock drone_2_lock(mutex_2);
+    mutex_1.lock();
+    // mutex_2.lock();
     while (true)
     {
       SPDLOG_DEBUG("Loop start");
@@ -33,11 +35,17 @@ namespace rpi4
         SPDLOG_ERROR("Failed to capture image!");
         continue;
       }
+      mutex_2.lock();
+      mutex_1.unlock();
+      cv.notify_all();
       if (!tflite->Inference(frame))
       {
         SPDLOG_ERROR("Failed to inference image!");
         continue;
       }
+      mutex_1.lock();
+      mutex_2.unlock();
+      cv.notify_all();
       SPDLOG_DEBUG("Loop end");
     }
   }

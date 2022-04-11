@@ -1,8 +1,9 @@
 #ifndef AUTODRONE_RPI4_TFLITE
 #define AUTODRONE_RPI4_TFLITE
 
-#include <memory>
 #include <vector>
+#include <thread>
+#include <mutex>
 
 #include <opencv2/core.hpp>
 #include <tensorflow/lite/interpreter.h>
@@ -29,8 +30,12 @@ namespace rpi4
     int output_nums_ = 0;
     size_t input_bytes_ = 0;
     size_t output_bytes_ = 0;
-    std::vector<float> prediction_;
     float threshold_ = 0.5;
+    std::unique_lock<std::mutex> lock_;
+
+  public:
+    std::mutex mutex;
+    std::vector<float> prediction;
 
   public:
     TFLite(/* args */);
@@ -40,5 +45,16 @@ namespace rpi4
     bool IsWork();
   };
 
+  // [xmin, ymin, xmax, ymax, confidence, class]
+  enum OutputArray
+  {
+    kXmin = 0,
+    kYmin = 1,
+    kXmax = 2,
+    kYmax = 3,
+    kConfidence = 4,
+    kClass = 5,
+    kOutputNum = 6
+  };
 } // namespace rpi4
 #endif // AUTODRONE_RPI4_TFLITE

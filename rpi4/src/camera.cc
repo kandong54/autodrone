@@ -19,6 +19,8 @@ namespace rpi4
 
     out_width_ = 640;
     out_height_ = 640;
+
+    lock_ = std::unique_lock<std::mutex>(mutex);
   }
 
   bool Camera::Open()
@@ -65,7 +67,9 @@ namespace rpi4
     // cv::Mat frame = frame(crop);
     cv::resize(tmp_img, tmp_img, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_LINEAR);
     cv::cvtColor(tmp_img, tmp_img, cv::COLOR_BGR2RGB);
+    lock_.lock();
     tmp_img.copyTo(frame);
+    lock_.unlock();
     SPDLOG_TRACE("Finish");
     return true;
   }

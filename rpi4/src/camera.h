@@ -1,6 +1,9 @@
 #ifndef AUTODRONE_RPI4_CAMERA
 #define AUTODRONE_RPI4_CAMERA
 
+#include <thread>
+#include <mutex>
+
 #include <opencv2/videoio.hpp>
 
 namespace rpi4
@@ -18,6 +21,10 @@ namespace rpi4
 
     int out_width_;
     int out_height_;
+    std::unique_lock<std::mutex> lock_;
+
+  public:
+    std::mutex mutex;
 
   public:
     Camera();

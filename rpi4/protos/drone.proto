@@ -8,7 +8,7 @@ import "google/protobuf/empty.proto";
 service Drone {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
-  rpc GetCamera (google.protobuf.Empty) returns (CameraReply) {}
+  rpc GetCamera (google.protobuf.Empty) returns (stream CameraReply) {}
 }
 
 // The request message containing the user's name.
@@ -21,6 +21,16 @@ message HelloReply {
   string message = 1;
 }
 
+
 message CameraReply {
-  string message = 1;
+  message BoundingBox {
+    float x_min = 1;
+    float y_min = 2;
+    float x_max = 3;
+    float y_max = 4;
+    float confidence = 5;
+    float class = 6;
+  }
+  bytes image = 1;
+  repeated BoundingBox box = 2;
 }
