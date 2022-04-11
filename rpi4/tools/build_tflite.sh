@@ -14,6 +14,7 @@ pushd $SRC_PATH
 
 # Build ARM binary
 # bazel clean
+#  -mfp16-format=ieee 
 bazel build --config=elinux_aarch64 -c opt //tensorflow/lite:libtensorflowlite.so # C++ library
 # bazel build --config=elinux_aarch64 -c opt //tensorflow/lite/c:libtensorflowlite_c.so # C library
 

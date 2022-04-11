@@ -15,10 +15,12 @@
 
 namespace rpi4
 {
+
   TFLite::TFLite(/* args */)
   {
     // Init parameter
     model_path_ = "./bin/best-int8.tflite";
+    threshold_ = 0.5;
   }
 
   TFLite::~TFLite()
@@ -49,27 +51,39 @@ namespace rpi4
       return false;
     }
     // get input tensor metadata
-    auto input_tensor = interpreter_->input_tensor(0);
+    TfLiteTensor *input_tensor = interpreter_->input_tensor(0);
+    TfLiteTensor *output_tensor = interpreter_->output_tensor(0);
     // quantization
     if (input_tensor->quantization.type == kTfLiteAffineQuantization)
     {
       is_quantization_ = true;
       // TODO: use TfLiteAffineQuantization
       // auto params = static_cast<TfLiteAffineQuantization *>(input_tensor->quantization.params);
-      auto params = input_tensor->params;
-      quant_scale_ = params.scale;
-      quant_zero_point_ = params.zero_point;
+      auto input_params = input_tensor->params;
+      input_quant_scale_ = input_params.scale;
+      input_quant_zero_point_ = input_params.zero_point;
+      auto output_params = output_tensor->params;
+      output_quant_scale_ = output_params.scale;
+      output_quant_zero_point_ = output_params.zero_point;
     }
     // Type
     input_type_ = input_tensor->type;
+    output_type_ = output_tensor->type;
     //Bytes
     input_bytes_ = input_tensor->bytes;
+    output_bytes_ = output_tensor->bytes;
     // dims
     // TODO: send to camera
-    TfLiteIntArray *dims = input_tensor->dims;
-    input_height_ = dims->data[1];
-    input_width_ = dims->data[2];
-    input_channels_ = dims->data[3];
+    TfLiteIntArray *input_dims = input_tensor->dims;
+    input_height_ = input_dims->data[1];
+    input_width_ = input_dims->data[2];
+    input_channels_ = input_dims->data[3];
+    // reserve prediction space
+    // [1, 25200, 6]
+    // [xmin, ymin, xmax, ymax, confidence, class]
+    TfLiteIntArray *output_dims = output_tensor->dims;
+    output_nums_ = output_dims->data[1];
+    prediction_.reserve(output_dims->data[1] * output_dims->data[2]);
     // SetNumThreads
     unsigned int threads_num = std::thread::hardware_concurrency();
     interpreter_->SetNumThreads(threads_num);
@@ -84,6 +98,38 @@ namespace rpi4
     SPDLOG_INFO("Loaded model {}", model_path_);
     return true;
   }
+
+  namespace
+  {
+    // [xmin, ymin, xmax, ymax, confidence, class]
+    enum OutputArray
+    {
+      kXmin = 0,
+      kYmin = 1,
+      kXmax = 2,
+      kYmax = 3,
+      kConfidence = 4,
+      kClass = 5,
+      kOutputNum = 6
+    };
+
+    template <class T>
+    void AddPrediction(std::unique_ptr<tflite::Interpreter> const &interpreter, std::vector<float> &prediction, float threshold, int output_nums)
+    {
+      T *output_tensor_ptr = interpreter->typed_output_tensor<T>(0);
+      for (int i = 0; i < output_nums; i++)
+      {
+        if (output_tensor_ptr[i * kOutputNum + kConfidence] >= threshold)
+        {
+          for (size_t j = 0; j < kOutputNum; j++)
+          {
+            prediction.push_back(static_cast<float>(output_tensor_ptr[i * kOutputNum + j]));
+          }
+        }
+      }
+    }
+
+  } // namespace
 
   bool TFLite::Inference(cv::Mat &image)
   {
@@ -102,7 +148,7 @@ namespace rpi4
       if (is_quantization_)
       {
         tmp_img.convertTo(tmp_img, CV_32FC3, 1 / 255.0);
-        tmp_img.convertTo(tmp_img, CV_8UC3, 1 / quant_scale_, quant_zero_point_);
+        tmp_img.convertTo(tmp_img, CV_8UC3, 1 / input_quant_scale_, input_quant_zero_point_);
       }
       input_tensor_ptr = interpreter_->typed_input_tensor<unsigned char>(0);
       tmp_img_ptr = tmp_img.ptr<unsigned char>(0);
@@ -135,7 +181,56 @@ namespace rpi4
     // Run!
     SPDLOG_TRACE("Invoke");
     interpreter_->Invoke();
-    SPDLOG_TRACE("Finish");
+    SPDLOG_TRACE("Output");
+    prediction_.clear();
+    // [1, 25200, 6]
+    // [xmin, ymin, xmax, ymax, confidence, class]
+    if (is_quantization_)
+    {
+      unsigned char quant_threshold = threshold_ / output_quant_scale_ + output_quant_zero_point_;
+      unsigned char *output_tensor_ptr = interpreter_->typed_output_tensor<unsigned char>(0);
+      for (int i = 0; i < output_nums_; i++)
+      {
+        if (output_tensor_ptr[i * kOutputNum + kConfidence] >= quant_threshold)
+        {
+          for (size_t j = 0; j < kOutputNum; j++)
+          {
+            prediction_.push_back((static_cast<float>(output_tensor_ptr[i * kOutputNum + j]) - output_quant_zero_point_) * output_quant_scale_);
+          }
+        }
+      }
+    }
+    else
+    {
+      switch (output_type_)
+      {
+      case kTfLiteUInt8:
+      {
+        AddPrediction<unsigned char>(interpreter_, prediction_, threshold_, output_nums_);
+        break;
+      }
+      case kTfLiteFloat32:
+      {
+        AddPrediction<float>(interpreter_, prediction_, threshold_, output_nums_);
+        break;
+      }
+      // case kTfLiteFloat16:
+      // {
+      //   AddPrediction<TfLiteFloat16>(interpreter_, prediction_, threshold_, output_nums_);
+      //   break;
+      // }
+      default:
+      {
+        SPDLOG_CRITICAL("Unsupported type: ", input_type_);
+        return false;
+        break;
+      }
+      }
+    }
+
+    SPDLOG_DEBUG("Total: {}", prediction_.size() / kOutputNum);
+
     return true;
   }
+
 } // namespace rpi4
