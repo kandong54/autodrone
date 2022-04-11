@@ -22,6 +22,12 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.clientService.connect()
+      .then(result => {
+        console.log('Connect result:', result);
+        this.server = this.clientService.server;
+      })
+      .catch((error) => console.log(error));
   }
 
   onSubmit(): void {

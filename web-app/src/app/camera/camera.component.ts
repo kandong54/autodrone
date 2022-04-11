@@ -12,14 +12,14 @@ export class CameraComponent implements OnInit {
   private myCanvas: ElementRef = {} as ElementRef;
 
   constructor(private clientService: ClientService) {
+  }
+
+  ngOnInit(): void {
     this.clientService.connect()
       .then(result => {
         console.log('Connect result:', result);
       })
       .catch((error) => alert(error));
-  }
-
-  ngOnInit(): void {
   }
 
 }
