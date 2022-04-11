@@ -5,55 +5,54 @@
 #include <string>
 
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
+// #include <grpcpp/health_check_service_interface.h>
 
+#include "drone_app.h"
 #include "log.h"
-#include "drone.grpc.pb.h"
 
-using autodrone::Drone;
-using autodrone::HelloReply;
-using autodrone::HelloRequest;
-using grpc::Server;
 using grpc::ServerBuilder;
-using grpc::ServerContext;
-using grpc::Status;
 
 namespace rpi4
 {
-  namespace
+  DroneServiceImpl::DroneServiceImpl(DroneApp *drone_app)
   {
-    // Logic and data behind the server's behavior.
-    class DroneServiceImpl final : public Drone::Service
-    {
-      Status SayHello(ServerContext *context, const HelloRequest *request,
-                      HelloReply *reply) override
-      {
-        SPDLOG_WARN("SayHello: {}", request->name());
-        std::string prefix("Hello ");
-        reply->set_message(prefix + request->name());
-        return Status::OK;
-      }
-    };
-  } // namespace
-  void RunServer()
-  {
-    std::string server_address("0.0.0.0:9090");
-    DroneServiceImpl service;
+    drone_app_ = drone_app;
+    server_address_ = "0.0.0.0:9090";
+  }
 
-    grpc::EnableDefaultHealthCheckService(true);
+  DroneServiceImpl::~DroneServiceImpl()
+  {
+  }
+
+  void DroneServiceImpl::Run()
+  {
+    // grpc::EnableDefaultHealthCheckService(true);
     // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
     ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
-    builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+    builder.AddListeningPort(server_address_, grpc::InsecureServerCredentials());
     // Register "service" as the instance through which we'll communicate with
     // clients. In this case it corresponds to an *synchronous* service.
-    builder.RegisterService(&service);
+    builder.RegisterService(this);
     // Finally assemble the server.
-    std::unique_ptr<Server> server(builder.BuildAndStart());
-    SPDLOG_WARN("Server listening on {}", server_address);
+    server_ = builder.BuildAndStart();
+    SPDLOG_WARN("Server listening on {}", server_address_);
+  }
+
+  void DroneServiceImpl::Wait()
+  {
     // Wait for the server to shutdown. Note that some other thread must be
     // responsible for shutting down the server for this call to ever return.
-    server->Wait();
+    server_->Wait();
   }
+
+  Status DroneServiceImpl::SayHello(ServerContext *context, const HelloRequest *request,
+                                    HelloReply *reply)
+  {
+    SPDLOG_INFO("SayHello: {}", request->name());
+    std::string prefix("Hello ");
+    reply->set_message(prefix + request->name());
+    return Status::OK;
+  }
+
 } // AUTODRONE_RPI4_SERVER

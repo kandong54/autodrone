@@ -9,6 +9,7 @@ SRC_EXT = cc
 # Path to the source directory
 SRC_PATH = src
 PROTO_PATH = protos
+GOOGLE_PROTO_PATH = /usr/include/
 # Space-separated pkg-config libraries used by this project
 LIBS = opencv4 protobuf grpc++ tflite spdlog
 # General compiler flags
@@ -74,11 +75,11 @@ proto: $(GRPCPB)
 
 $(SRC_PATH)/%.grpc.pb.cc: $(PROTO_PATH)/%.proto
 	@echo "Generating: $< -> $@"
-	protoc -I $(PROTO_PATH) --grpc_out=$(SRC_PATH) --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $<
+	protoc -I $(PROTO_PATH) -I $(GOOGLE_PROTO_PATH) --grpc_out=$(SRC_PATH) --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $<
 
 $(SRC_PATH)/%.pb.cc: $(PROTO_PATH)/%.proto
 	@echo "Generating: $< -> $@"
-	protoc -I $(PROTO_PATH) --cpp_out=$(SRC_PATH) $<
+	protoc -I $(PROTO_PATH) -I $(GOOGLE_PROTO_PATH) --cpp_out=$(SRC_PATH) $<
 
 # Removes all build files
 .PHONY: clean

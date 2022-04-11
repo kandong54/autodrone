@@ -98,7 +98,10 @@ namespace rpi4
     SPDLOG_INFO("Loaded model {}", model_path_);
     return true;
   }
-
+  bool TFLite::IsWork()
+  {
+    return (interpreter_->Invoke() == kTfLiteOk);
+  }
   namespace
   {
     // [xmin, ymin, xmax, ymax, confidence, class]

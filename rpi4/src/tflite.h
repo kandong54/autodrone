@@ -37,6 +37,7 @@ namespace rpi4
     ~TFLite();
     bool Load();
     bool Inference(cv::Mat &image);
+    bool IsWork();
   };
 
 } // namespace rpi4

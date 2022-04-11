@@ -4,6 +4,8 @@
 #include <memory>
 #include <thread>
 
+#include <opencv2/core.hpp>
+
 namespace rpi4
 {
   class Camera;
@@ -11,10 +13,13 @@ namespace rpi4
 
   class DroneApp
   {
-  private:
-    std::unique_ptr<Camera> camera_;
-    std::unique_ptr<TFLite> tflite_;
+  private: 
     std::unique_ptr<std::thread> thread_;
+
+  public:
+    std::unique_ptr<Camera> camera;
+    std::unique_ptr<TFLite> tflite;
+    cv::Mat frame;
 
   private:
     void Run();
