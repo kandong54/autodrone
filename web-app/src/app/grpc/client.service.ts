@@ -11,10 +11,10 @@ export { ClientService, Server };
 class ClientService {
 
   server: Server = {
-    protocol: 'https://',
-    address: 'drone.kandong.dev',
-    port: 10000,
-    password: 'password'
+    protocol: '',
+    address: '',
+    port: 0,
+    password: ''
   };
 
   client: DroneClient | undefined = undefined;
@@ -42,16 +42,30 @@ class ClientService {
     return hashHex;
   }
 
+  save() {
+    localStorage.setItem('server.protocol', this.server.protocol);
+    localStorage.setItem('server.address', this.server.address);
+    localStorage.setItem('server.port', this.server.port.toString());
+    localStorage.setItem('server.password', this.server.password);
+  }
+  load() {
+    this.server.protocol = localStorage.getItem('server.protocol') ?? '';
+    this.server.address = localStorage.getItem('server.address') ?? '';
+    this.server.port = +(localStorage.getItem('server.port') ?? 0);
+    this.server.password = localStorage.getItem('server.password') ?? '';
+  }
+
   async connect(server?: Server): Promise<boolean> {
     if (server !== undefined) {
       this.server = server;
+    } else {
+      this.load();
     }
     if (this.client !== undefined) {
       // this.client.close()
     }
     let hostname = this.server.protocol + this.server.address + ':' + this.server.port;
-    let hash = await this.digestMessage(this.server.password);
-    const authInterceptor = new AuthInterceptor(hash)
+    const authInterceptor = new AuthInterceptor(this.server.password)
     const options = {
       unaryInterceptors: [authInterceptor],
       streamInterceptors: [authInterceptor]
@@ -60,6 +74,7 @@ class ClientService {
     const name = 'world';
     let message = await this.SayHello(name);
     if (message === 'Hello ' + name) {
+      this.save();
       return true;
     } else {
       return false;
