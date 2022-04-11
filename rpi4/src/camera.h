@@ -11,9 +11,19 @@ namespace rpi4
   private:
     cv::VideoCapture cap_;
 
+    int cap_device_;
+    int cap_width_;
+    int cap_height_;
+    int cap_fps_;
+
+    int out_width_;
+    int out_height_;
+
   public:
     Camera();
-    bool CaptureImage();
+    bool Open();
+    bool CaptureImage(cv::Mat &frame);
+    bool IsOpened();
   };
 
 } // namespace rpi4

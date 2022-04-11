@@ -1,56 +1,77 @@
 #include "camera.h"
 
-#include <iostream>
-
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <spdlog/spdlog.h>
+#include <opencv2/imgproc.hpp>
+
+#include "log.h"
 
 namespace rpi4
 {
 
   Camera::Camera()
   {
-    int deviceID = 0;        // 0 = open default camera
-    int apiID = cv::CAP_ANY; // 0 = autodetect default API
-    cap_.open(deviceID, apiID);
-    // check if we succeeded
+    // init parameters
+    cap_device_ = 0;
+    cap_width_ = 960;
+    cap_height_ = 720;
+    cap_fps_ = 5;
+
+    out_width_ = 640;
+    out_height_ = 640;
+  }
+
+  bool Camera::Open()
+  {
+    SPDLOG_INFO("Opening camera {}", cap_device_);
+    cap_.open(cap_device_);
     if (!cap_.isOpened())
     {
       SPDLOG_CRITICAL("Unable to open camera");
-      //return -1;
+      return false;
     }
-    else
-    {
-      cap_.set(cv::CAP_PROP_FRAME_HEIGHT, 720);
-      cap_.set(cv::CAP_PROP_FRAME_WIDTH, 960);
-      // reduce buffer size so that we can read the most latest one
-      cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
-    }
+    // the setting must meet v4l2-ctl --list-formats-ext
+    cap_.set(cv::CAP_PROP_FRAME_WIDTH, cap_width_);
+    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, cap_height_);
+    cap_.set(cv::CAP_PROP_FPS, cap_fps_);
+    // reduce buffer size so that we can read the most latest one
+    cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
+    // warmup capture
+    cap_.grab();
+    SPDLOG_INFO("Opened camera {}", cap_device_);
+    return true;
   }
 
-  bool Camera::CaptureImage()
+  bool Camera::CaptureImage(cv::Mat &frame)
   {
     if (!cap_.isOpened())
       return false;
 
-    cv::Mat frame;
     // clear buffer
     // TODO: any good solution? How to read the most latest one?
-    cap_.grab();
-    cap_.read(frame);
+    SPDLOG_TRACE("Read");
+    cv::Mat tmp_img;
+    //cap_.grab();
+    cap_.read(tmp_img);
     // check if we succeeded
-    if (frame.empty())
+    if (tmp_img.empty())
     {
       SPDLOG_ERROR("blank frame grabbed");
       return false;
     }
-    // TODO: add resize method.
-    // crop image: 960*720 -> 640*640
-    cv::Rect myROI(160, 40, 800, 680);
-    cv::Mat croppedImage = frame(myROI);
-
+    SPDLOG_TRACE("Postprocess");
+    // TODO: add crop method.
+    // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
+    // cv::Mat frame = frame(crop);
+    cv::resize(tmp_img, tmp_img, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_LINEAR);
+    cv::cvtColor(tmp_img, tmp_img, cv::COLOR_BGR2RGB);
+    tmp_img.copyTo(frame);
+    SPDLOG_TRACE("Finish");
     return true;
+  }
+
+  bool Camera::IsOpened()
+  {
+    return cap_.isOpened();
   }
 } // namespace rpi4

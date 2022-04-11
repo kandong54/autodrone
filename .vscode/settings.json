@@ -65,7 +65,7 @@
     },
     "makefile.launchConfigurations": [
         {
-            "cwd": "/home/pi/autodrone/rpi4/bin",
+            "cwd": "/home/pi/autodrone/rpi4",
             "binaryPath": "/home/pi/autodrone/rpi4/bin/main.out",
             "binaryArgs": []
         }
