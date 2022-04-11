@@ -19,7 +19,7 @@ namespace rpi4
   TFLite::TFLite(/* args */)
   {
     // Init parameter
-    model_path_ = "./bin/best-int8.tflite";
+    model_path_ = "./model/best-int8.tflite";
     threshold_ = 0.5;
     lock_ = std::unique_lock<std::mutex>(mutex);
   }

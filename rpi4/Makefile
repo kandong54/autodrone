@@ -11,7 +11,7 @@ SRC_PATH = src
 PROTO_PATH = protos
 GOOGLE_PROTO_PATH = /usr/include/
 # Space-separated pkg-config libraries used by this project
-LIBS = opencv4 protobuf grpc++ tflite spdlog
+LIBS = opencv4 protobuf grpc++ tflite spdlog openssl
 # General compiler flags
 CXXFLAGS += -Wall -Wextra -O0 -g -std=c++17
 # Add additional include paths

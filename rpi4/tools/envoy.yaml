@@ -23,17 +23,11 @@ static_resources:
               routes:
               - match: 
                   prefix: "/"
-                  headers: 
-                  - name: "authorization"
-                    exact_match: "Bearer 5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
                 route:
                   cluster: drone_service
                   timeout: 0s
                   max_stream_duration:
                     grpc_timeout_header_max: 0s
-              - match: { prefix: "/" }
-                route:
-                  cluster: dummy_service
               cors:
                 allow_origin_string_match:
                 - prefix: "*"
@@ -123,17 +117,7 @@ static_resources:
                   socket_address:
                     address: 127.0.0.1
                     port_value: 9090
-  - name: dummy_service
-    connect_timeout: 0.001s
-    type: logical_dns
-    http2_protocol_options: {}
-    lb_policy: round_robin
-    load_assignment:
-      cluster_name: cluster_0
-      endpoints:
-        - lb_endpoints:
-            - endpoint:
-                address:
-                  socket_address:
-                    address: 127.0.0.1
-                    port_value: 9091
+    transport_socket:
+      name: envoy.transport_sockets.tls
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext

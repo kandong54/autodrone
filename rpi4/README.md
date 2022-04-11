@@ -8,6 +8,7 @@ Hello, World!
 - gRPC
 - TFLite
 - spdlog
+- OpenSSL
 
 To install OpenCV, gRPC, and spdlog:
 
