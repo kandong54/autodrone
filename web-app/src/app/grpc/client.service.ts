@@ -14,7 +14,8 @@ class ClientService {
     protocol: '',
     address: '',
     port: 0,
-    password: ''
+    password: '',
+    passwordHashed: ''
   };
 
   client: DroneClient | undefined = undefined;
@@ -34,8 +35,8 @@ class ClientService {
   }
 
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest
-  async digestMessage(message: string) {
-    const msgUint8 = new TextEncoder().encode(message);                           // encode as (utf-8) Uint8Array
+  async digestMessage(message: string, salt: string = '3NqlrT9*v8^0') {
+    const msgUint8 = new TextEncoder().encode(message + salt);                           // encode as (utf-8) Uint8Array
     const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);           // hash the message
     const hashArray = Array.from(new Uint8Array(hashBuffer));                     // convert buffer to byte array
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); // convert bytes to hex string
@@ -46,18 +47,19 @@ class ClientService {
     localStorage.setItem('server.protocol', this.server.protocol);
     localStorage.setItem('server.address', this.server.address);
     localStorage.setItem('server.port', this.server.port.toString());
-    localStorage.setItem('server.password', this.server.password);
+    localStorage.setItem('server.passwordHashed', this.server.passwordHashed);
   }
   load() {
-    this.server.protocol = localStorage.getItem('server.protocol') ?? '';
-    this.server.address = localStorage.getItem('server.address') ?? '';
-    this.server.port = +(localStorage.getItem('server.port') ?? 0);
-    this.server.password = localStorage.getItem('server.password') ?? '';
+    this.server.protocol = localStorage.getItem('server.protocol') ?? 'https://';
+    this.server.address = localStorage.getItem('server.address') ?? 'drone.kandong.dev';
+    this.server.port = +(localStorage.getItem('server.port') ?? 10000);
+    this.server.passwordHashed = localStorage.getItem('server.passwordHashed') ?? '';
   }
 
   async connect(server?: Server): Promise<boolean> {
     if (server !== undefined) {
       this.server = server;
+      this.server.passwordHashed = await this.digestMessage(this.server.password);
     } else {
       this.load();
     }
@@ -65,7 +67,7 @@ class ClientService {
       // this.client.close()
     }
     let hostname = this.server.protocol + this.server.address + ':' + this.server.port;
-    const authInterceptor = new AuthInterceptor(this.server.password)
+    const authInterceptor = new AuthInterceptor(this.server.passwordHashed)
     const options = {
       unaryInterceptors: [authInterceptor],
       streamInterceptors: [authInterceptor]
@@ -89,6 +91,7 @@ interface Server {
   address: string;
   port: number;
   password: string;
+  passwordHashed: string;
 }
 
 // https://nicu.dev/posts/typescript-grpc-web-auth-interceptor
