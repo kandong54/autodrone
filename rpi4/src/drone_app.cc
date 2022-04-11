@@ -46,7 +46,7 @@ namespace rpi4
       mutex_1.lock();
       mutex_2.unlock();
       cv.notify_all();
-      SPDLOG_DEBUG("Loop end");
+      SPDLOG_TRACE("Loop end");
     }
   }
 
