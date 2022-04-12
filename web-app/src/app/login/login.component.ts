@@ -11,10 +11,11 @@ import { ClientService, Server } from '../grpc/client.service';
 })
 export class LoginComponent implements OnInit {
   server: Server = {
-    protocol: 'https://',
-    address: 'drone.kandong.dev',
-    port: 10000,
-    password: 'password'
+    protocol: '',
+    address: '',
+    port: 0,
+    password: '',
+    passwordHashed: ''
   };
   submitted = false;
   constructor(private clientService: ClientService,
@@ -22,23 +23,20 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.clientService.load()
+    this.server = this.clientService.server;
     this.clientService.connect()
       .then(result => {
         console.log('Connect result:', result);
-        this.server = this.clientService.server;
+        this.router.navigate(['/camera']);
       })
       .catch((error) => console.log(error));
   }
 
   onSubmit(): void {
-
-    console.log('Connect drone:', this.server);
     this.submitted = true;
-    this.clientService.digestMessage(this.server.password)
-      .then(hash => {
-        this.server.password = hash;
-        return this.clientService.connect(this.server);
-      })
+    console.log('Connect:', this.server);
+    this.clientService.connect(this.server)
       .then(result => {
         console.log('Connect result:', result);
         this.router.navigate(['/camera']);
