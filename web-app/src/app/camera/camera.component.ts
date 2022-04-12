@@ -62,8 +62,9 @@ export class CameraComponent implements OnInit, AfterViewInit {
           this.imageStream.on('error', (err) => alert('Connection error: ' + err));
           this.imageStream.on('end', () => alert('Connection ends.'));
           // this.imageStream.on('status', (status) => alert('Connection status: ' + status.details));
-          let imageRGBA = new Uint8ClampedArray(this.imageWidth * this.imageHeight * 4);
-          imageRGBA.fill(255);
+          // let imageRGBA = new Uint8ClampedArray(this.imageWidth * this.imageHeight * 4);
+          // imageRGBA.fill(255);
+          let image = new Image();
           this.imageStream.on('data', (response) => {
             let imageRGB = response.getImage_asU8();
             let boxes = response.getBoxList();
@@ -78,11 +79,10 @@ export class CameraComponent implements OnInit, AfterViewInit {
             // this.ctx.putImageData(image, 0, 0);
             // jpg
             let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
-            let image = new Image();
+            URL.revokeObjectURL(image.src)
             image.src = URL.createObjectURL(blob);
             image.onload = () => {
               ctx.drawImage(image, 0, 0);
-              // URL.revokeObjectURL(image.src);
               for (const box of boxes) {
                 let xCenter = box.getXCenter() * this.imageWidth;
                 let yCenter = box.getYCenter() * this.imageHeight;
