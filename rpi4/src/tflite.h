@@ -45,13 +45,13 @@ namespace rpi4
     bool IsWork();
   };
 
-  // [xmin, ymin, xmax, ymax, confidence, class]
+  // [Cx, Cy, width , height, confidence, class]
   enum OutputArray
   {
-    kXmin = 0,
-    kYmin = 1,
-    kXmax = 2,
-    kYmax = 3,
+    kXCenter = 0,
+    kYCenter = 1,
+    kWidth = 2,
+    kHeight = 3,
     kConfidence = 4,
     kClass = 5,
     kOutputNum = 6

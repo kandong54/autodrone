@@ -22,9 +22,10 @@ namespace rpi4
     std::unique_ptr<Camera> camera;
     std::unique_ptr<TFLite> tflite;
     cv::Mat frame;
-    std::mutex mutex_1;
-    std::mutex mutex_2;
-    std::condition_variable cv;
+    std::condition_variable cv_1;
+    std::condition_variable cv_2;
+    bool cv_flag_1;
+    bool cv_flag_2;
 
   private:
     void Run();

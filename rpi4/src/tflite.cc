@@ -21,7 +21,7 @@ namespace rpi4
     // Init parameter
     model_path_ = "./model/best-int8.tflite";
     threshold_ = 0.5;
-    lock_ = std::unique_lock<std::mutex>(mutex);
+    lock_ = std::unique_lock<std::mutex>(mutex, std::defer_lock);
   }
 
   TFLite::~TFLite()
@@ -81,7 +81,7 @@ namespace rpi4
     input_channels_ = input_dims->data[3];
     // reserve prediction space
     // [1, 25200, 6]
-    // [xmin, ymin, xmax, ymax, confidence, class]
+    // [Cx, Cy, width , height, confidence, class]
     TfLiteIntArray *output_dims = output_tensor->dims;
     output_nums_ = output_dims->data[1];
     prediction.reserve(output_dims->data[1] * output_dims->data[2]);
@@ -178,7 +178,7 @@ namespace rpi4
     prediction.clear();
     // TODO: width and height
     // [1, 25200, 6]
-    // [xmin, ymin, xmax, ymax, confidence, class]
+    // [Cx, Cy, width , height, confidence, class]
     if (is_quantization_)
     {
       unsigned char quant_threshold = threshold_ / output_quant_scale_ + output_quant_zero_point_;

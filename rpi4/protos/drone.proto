@@ -24,10 +24,10 @@ message HelloReply {
 
 message CameraReply {
   message BoundingBox {
-    float x_min = 1;
-    float y_min = 2;
-    float x_max = 3;
-    float y_max = 4;
+    float x_center = 1;
+    float y_center = 2;
+    float width = 3;
+    float height = 4;
     float confidence = 5;
     float class = 6;
   }

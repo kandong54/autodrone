@@ -54,7 +54,7 @@ namespace rpi4
                    md_alg, nullptr);
         std::ostringstream hex_stream;
 
-        for (int i = 0; i < md_len; i++)
+        for (unsigned int i = 0; i < md_len; i++)
           hex_stream << std::hex << std::setfill('0') << std::setw(2) << (int)md_value[i];
 
         token_ = std::string("Bearer ") + hex_stream.str();
@@ -96,7 +96,7 @@ namespace rpi4
     server_address_ = "0.0.0.0:9090";
     server_key_path_ = "./certs/key.pem";
     server_cert_path_ = "./certs/cert.pem";
-    password_ = "password";
+    password_ = "robobee";
     password_salt_ = "3NqlrT9*v8^0";
     processor_ = std::unique_ptr<DroneAuthMetadataProcessor>(new DroneAuthMetadataProcessor(password_, password_salt_));
   }
@@ -147,36 +147,34 @@ namespace rpi4
   Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] const Empty *request, ServerWriter<CameraReply> *writer)
   {
     SPDLOG_INFO("GetCamera");
-    // std::unique_lock camera_lock(drone_app_->camera->mutex);
-    // std::unique_lock tflite_lock(drone_app_->tflite->mutex);
-    std::unique_lock drone_1_lock(drone_app_->mutex_1);
-    std::unique_lock drone_2_lock(drone_app_->mutex_2);
+    // std::unique_lock camera_lock(drone_app_->camera->mutex, std::defer_lock);
+    // std::unique_lock tflite_lock(drone_app_->tflite->mutex, std::defer_lock);
+    // TODO: remove mutex
+    std::mutex mutex;
+    std::unique_lock drone_lock(mutex);
     CameraReply reply;
-    drone_app_->cv.wait(drone_1_lock);
-    drone_1_lock.unlock();
+    drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
     size_t image_bytes = drone_app_->frame.total() * drone_app_->frame.elemSize();
     while (!context->IsCancelled())
     {
       SPDLOG_DEBUG("Loop start");
       // Read Image
-      drone_app_->cv.wait(drone_1_lock);
-      drone_1_lock.unlock();
+      drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
       SPDLOG_TRACE("set image");
       reply.set_image(drone_app_->frame.ptr(), image_bytes);
       SPDLOG_TRACE("set");
       // Bounding Box
-      drone_app_->cv.wait(drone_2_lock);
-      drone_2_lock.unlock();
+      drone_app_->cv_2.wait(drone_lock, [this] { return drone_app_->cv_flag_2; });
       reply.clear_box();
       SPDLOG_TRACE("add box");
       size_t num_box = drone_app_->tflite->prediction.size();
       for (size_t i = 0; i < num_box; i++)
       {
         CameraReply_BoundingBox *box = reply.add_box();
-        box->set_x_min(drone_app_->tflite->prediction[i * kOutputNum + kXmin]);
-        box->set_y_min(drone_app_->tflite->prediction[i * kOutputNum + kYmin]);
-        box->set_x_max(drone_app_->tflite->prediction[i * kOutputNum + kXmax]);
-        box->set_y_max(drone_app_->tflite->prediction[i * kOutputNum + kYmax]);
+        box->set_x_center(drone_app_->tflite->prediction[i * kOutputNum + kXCenter]);
+        box->set_y_center(drone_app_->tflite->prediction[i * kOutputNum + kYCenter]);
+        box->set_width(drone_app_->tflite->prediction[i * kOutputNum + kWidth]);
+        box->set_height(drone_app_->tflite->prediction[i * kOutputNum + kHeight]);
         box->set_confidence(drone_app_->tflite->prediction[i * kOutputNum + kConfidence]);
         box->set_class_(drone_app_->tflite->prediction[i * kOutputNum + kClass]);
       }

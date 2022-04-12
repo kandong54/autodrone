@@ -20,7 +20,7 @@ namespace rpi4
     out_width_ = 640;
     out_height_ = 640;
 
-    lock_ = std::unique_lock<std::mutex>(mutex);
+    lock_ = std::unique_lock<std::mutex>(mutex, std::defer_lock);
   }
 
   bool Camera::Open()
