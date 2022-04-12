@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[])
 {
-  spdlog::set_level(spdlog::level::debug);
+  spdlog::set_level(spdlog::level::trace);
   // [2022-04-10 13:41:10.003] [Elapsed time] [info] [main.cc:main():9] [Thread id]  Hello World
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%4o] [%^%l%$] [%s:%!():%#] [%t] %v");
   SPDLOG_INFO("Hello World");

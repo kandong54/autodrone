@@ -25,18 +25,20 @@ namespace rpi4
   {
     cv_flag_1 = false;
     cv_flag_2 = true;
+    cv::Mat tmp_frame;
     while (true)
     {
       SPDLOG_DEBUG("Loop start");
-      if (!camera->CaptureImage(frame))
+      if (!camera->CaptureImage(tmp_frame))
       {
         SPDLOG_ERROR("Failed to capture image!");
         continue;
       }
+      tmp_frame.copyTo(frame);
       cv_flag_1 = true;
       cv_flag_2 = false;
       cv_1.notify_all();
-      if (!tflite->Inference(frame))
+      if (!tflite->Inference(tmp_frame))
       {
         SPDLOG_ERROR("Failed to inference image!");
         continue;

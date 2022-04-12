@@ -48,15 +48,13 @@ namespace rpi4
   {
     if (!cap_.isOpened())
       return false;
-
     // clear buffer
     // TODO: any good solution? How to read the most latest one?
     SPDLOG_TRACE("Read");
-    cv::Mat tmp_img;
     //cap_.grab();
-    cap_.read(tmp_img);
+    cap_.read(frame);
     // check if we succeeded
-    if (tmp_img.empty())
+    if (frame.empty())
     {
       SPDLOG_ERROR("blank frame grabbed");
       return false;
@@ -65,11 +63,8 @@ namespace rpi4
     // TODO: add crop method.
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
-    cv::resize(tmp_img, tmp_img, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_LINEAR);
-    cv::cvtColor(tmp_img, tmp_img, cv::COLOR_BGR2RGB);
-    lock_.lock();
-    tmp_img.copyTo(frame);
-    lock_.unlock();
+    cv::resize(frame, frame, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_LINEAR);
+    //cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     SPDLOG_TRACE("Finish");
     return true;
   }
