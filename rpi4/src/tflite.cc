@@ -5,6 +5,7 @@
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
+#include <opencv2/imgproc.hpp>
 // #include "tensorflow/lite/optional_debug_tools.h"
 
 #include "log.h"
@@ -123,12 +124,11 @@ namespace rpi4
 
   } // namespace
 
-  bool TFLite::Inference(cv::Mat &image)
+  bool TFLite::Inference(cv::Mat &frame)
   {
     SPDLOG_TRACE("Read");
     // TODO: Check interpreter
-    cv::Mat tmp_img;
-    image.copyTo(tmp_img);
+    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     // Type convert, default CV_8UC3, kTfLiteUInt8
     SPDLOG_TRACE("Convert");
     void *input_tensor_ptr = nullptr;
@@ -139,25 +139,25 @@ namespace rpi4
     {
       if (is_quantization_)
       {
-        tmp_img.convertTo(tmp_img, CV_32FC3, 1 / 255.0);
-        tmp_img.convertTo(tmp_img, CV_8UC3, 1 / input_quant_scale_, input_quant_zero_point_);
+        frame.convertTo(frame, CV_32FC3, 1 / 255.0);
+        frame.convertTo(frame, CV_8UC3, 1 / input_quant_scale_, input_quant_zero_point_);
       }
       input_tensor_ptr = interpreter_->typed_input_tensor<unsigned char>(0);
-      tmp_img_ptr = tmp_img.ptr<unsigned char>(0);
+      tmp_img_ptr = frame.ptr<unsigned char>(0);
       break;
     }
     case kTfLiteFloat32:
     {
-      tmp_img.convertTo(tmp_img, CV_32FC3, 1 / 255.0);
+      frame.convertTo(frame, CV_32FC3, 1 / 255.0);
       input_tensor_ptr = interpreter_->typed_input_tensor<float>(0);
-      tmp_img_ptr = tmp_img.ptr<float>(0);
+      tmp_img_ptr = frame.ptr<float>(0);
       break;
     }
     case kTfLiteFloat16:
     {
-      tmp_img.convertTo(tmp_img, CV_16FC3, 1 / 255.0);
+      frame.convertTo(frame, CV_16FC3, 1 / 255.0);
       input_tensor_ptr = interpreter_->typed_input_tensor<TfLiteFloat16>(0);
-      tmp_img_ptr = tmp_img.ptr<uint16_t>(0);
+      tmp_img_ptr = frame.ptr<uint16_t>(0);
       break;
     }
     default:

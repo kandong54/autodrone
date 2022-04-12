@@ -10,6 +10,7 @@
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 // #include <grpcpp/health_check_service_interface.h>
 #include <openssl/evp.h>
+#include <opencv2/imgcodecs.hpp>
 
 #include "drone_app.h"
 #include "log.h"
@@ -153,15 +154,20 @@ namespace rpi4
     std::mutex mutex;
     std::unique_lock drone_lock(mutex);
     CameraReply reply;
-    drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
-    size_t image_bytes = drone_app_->frame.total() * drone_app_->frame.elemSize();
+    std::vector<uchar> buf;
+    // TODO: drone_app_->tflite
+    buf.reserve(640 * 640 * 3);
+    // drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
+    // size_t image_bytes = drone_app_->frame.total() * drone_app_->frame.elemSize();
     while (!context->IsCancelled())
     {
       SPDLOG_DEBUG("Loop start");
       // Read Image
       drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
       SPDLOG_TRACE("set image");
-      reply.set_image(drone_app_->frame.ptr(), image_bytes);
+      buf.clear();
+      cv::imencode(".jpg", drone_app_->frame, buf);
+      reply.set_image(buf.data(), buf.size());
       SPDLOG_TRACE("set");
       // Bounding Box
       drone_app_->cv_2.wait(drone_lock, [this] { return drone_app_->cv_flag_2; });

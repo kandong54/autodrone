@@ -30,7 +30,7 @@ namespace rpi4
     int output_nums_ = 0;
     size_t input_bytes_ = 0;
     size_t output_bytes_ = 0;
-    float threshold_ = 0.5;
+    float threshold_ = 0.25;
     std::unique_lock<std::mutex> lock_;
 
   public:
