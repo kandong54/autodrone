@@ -16,7 +16,6 @@ export class CameraComponent implements OnInit, AfterViewInit {
   imageWidth: number;
   imageHeight: number;
   imageStream: ClientReadableStream<CameraReply> | null = null;
-  ctx: CanvasRenderingContext2D | null = null;
 
   @ViewChild('myCanvas')
   private myCanvas: ElementRef = {} as ElementRef;
@@ -49,9 +48,9 @@ export class CameraComponent implements OnInit, AfterViewInit {
     this.myCanvas.nativeElement.style.aspectRatio = this.cameraWidth / this.cameraHeight;
     // this.myCanvas.nativeElement.style.width = '100%';
     // this.myCanvas.nativeElement.style.height = 100 * this.cameraHeight / this.cameraWidth + '%';
-    this.ctx = this.myCanvas.nativeElement.getContext('2d');
-    this.ctx!.strokeStyle = 'red';
-    this.ctx!.font = '48px Roboto';
+    var ctx = this.myCanvas.nativeElement.getContext('2d');
+    ctx.strokeStyle = 'red';
+    ctx.font = '48px Roboto';
     this.clientService.connect()
       .then((result) => {
         if (result === true) {
@@ -69,14 +68,21 @@ export class CameraComponent implements OnInit, AfterViewInit {
             let imageRGB = response.getImage_asU8();
             let boxes = response.getBoxList();
             // TODO: offscreen render
-            if (this.ctx != null) {
-              for (let iRGBA = 0, iRGB = 0; iRGBA < imageRGBA.length; iRGBA += 4, iRGB += 3) {
-                imageRGBA[iRGBA] = imageRGB[iRGB];
-                imageRGBA[iRGBA + 1] = imageRGB[iRGB + 1];
-                imageRGBA[iRGBA + 2] = imageRGB[iRGB + 2];
-              }
-              let image = new ImageData(imageRGBA, this.imageWidth, this.imageHeight);
-              this.ctx.putImageData(image, 0, 0);
+            // raw data
+            // for (let iRGBA = 0, iRGB = 0; iRGBA < imageRGBA.length; iRGBA += 4, iRGB += 3) {
+            //   imageRGBA[iRGBA] = imageRGB[iRGB];
+            //   imageRGBA[iRGBA + 1] = imageRGB[iRGB + 1];
+            //   imageRGBA[iRGBA + 2] = imageRGB[iRGB + 2];
+            // }
+            // let image = new ImageData(imageRGBA, this.imageWidth, this.imageHeight);
+            // this.ctx.putImageData(image, 0, 0);
+            // jpg
+            let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
+            let image = new Image();
+            image.src = URL.createObjectURL(blob);
+            image.onload = () => {
+              ctx.drawImage(image, 0, 0);
+              // URL.revokeObjectURL(image.src);
               for (const box of boxes) {
                 let xCenter = box.getXCenter() * this.imageWidth;
                 let yCenter = box.getYCenter() * this.imageHeight;
@@ -84,9 +90,9 @@ export class CameraComponent implements OnInit, AfterViewInit {
                 let height = box.getHeight() * this.imageHeight;
                 let x = xCenter - width / 2;
                 let y = yCenter - height / 2;
-                this.ctx.strokeRect(x, y, width, height);
+                ctx.strokeRect(x, y, width, height);
                 let confidence = box.getConfidence();
-                this.ctx.fillText(Math.round(confidence * 100) + '%', x, y);
+                ctx.fillText(Math.round(confidence * 100) + '%', x, y);
               }
             }
           });
