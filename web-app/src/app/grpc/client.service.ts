@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { DroneClient } from '../../protos/DroneServiceClientPb';
-import { HelloRequest, HelloReply } from '../../protos/drone_pb';
-import * as grpcWeb from 'grpc-web';
+import { HelloRequest, CameraReply } from '../../protos/drone_pb';
+import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
+import { ClientReadableStream } from 'grpc-web';
 
 export { ClientService, Server };
 
@@ -18,13 +19,13 @@ class ClientService {
     passwordHashed: ''
   };
 
-  client: DroneClient | undefined = undefined;
+  client: DroneClient | null = null;
 
   constructor() { }
 
-  async SayHello(name: string): Promise<string | null> {
+  async sayHello(name: string): Promise<string | null> {
 
-    if (this.client === undefined) {
+    if (this.client === null) {
       return null;
     }
 
@@ -63,7 +64,7 @@ class ClientService {
     } else {
       this.load();
     }
-    if (this.client !== undefined) {
+    if (this.client !== null) {
       // this.client.close()
     }
     let hostname = this.server.protocol + this.server.address + ':' + this.server.port;
@@ -74,7 +75,7 @@ class ClientService {
     }
     this.client = new DroneClient(hostname, null, options);
     const name = 'world';
-    let message = await this.SayHello(name);
+    let message = await this.sayHello(name);
     if (message === 'Hello ' + name) {
       this.save();
       return true;
@@ -83,6 +84,13 @@ class ClientService {
     }
   }
 
+  getCamera(): ClientReadableStream<CameraReply> | null {
+    if (this.client === null) {
+      return null;
+    }
+    return this.client.getCamera(new Empty());
+
+  }
 }
 
 
