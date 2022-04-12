@@ -10,6 +10,7 @@ import { ClientService, Server } from '../grpc/client.service';
   styleUrls: ['./login.component.sass']
 })
 export class LoginComponent implements OnInit {
+
   server: Server = {
     protocol: '',
     address: '',
@@ -18,6 +19,7 @@ export class LoginComponent implements OnInit {
     passwordHashed: ''
   };
   submitted = false;
+
   constructor(private clientService: ClientService,
     private router: Router) {
   }

@@ -34,9 +34,6 @@
       <mat-form-field appearance="fill" class="full-width">
         <mat-label>Password</mat-label>
         <input matInput type="password" [(ngModel)]="server.password" name="password">
-        <button *ngIf="server.password" matSuffix mat-icon-button aria-label="Clear" (click)="server.password=''">
-          <mat-icon>close</mat-icon>
-        </button>
       </mat-form-field>
     </mat-card-content>
 
