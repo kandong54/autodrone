@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "proto": "protoc --proto_path=../rpi4/protos $(find ../rpi4/protos -iname \"*.proto\") --js_out=import_style=commonjs,binary:./src/protos --grpc-web_out=import_style=typescript,mode=grpcwebtext:./src/protos"
+    "proto-linux": "protoc --proto_path=../rpi4/protos $(find ../rpi4/protos -iname \"*.proto\") --js_out=import_style=commonjs,binary:./src/protos --grpc-web_out=import_style=typescript,mode=grpcwebtext:./src/protos",
+    "proto-windows": "protoc --proto_path=../rpi4/protos $(Get-ChildItem -Path ../rpi4/protos -Include *.proto -Name) --js_out=import_style=commonjs,binary:./src/protos --grpc-web_out=import_style=typescript,mode=grpcwebtext:./src/protos"
   },
   "private": true,
   "dependencies": {
