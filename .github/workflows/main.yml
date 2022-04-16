@@ -40,7 +40,7 @@ jobs:
       - name: Build
         run: |
           cd web-app
-          npm run proto
+          npm run proto-linux
           ng build --base-href "/drone/"
           cp dist/web-app/index.html dist/web-app/404.html
 
