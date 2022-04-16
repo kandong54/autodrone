@@ -54,7 +54,7 @@ sudo apt install # lib
 
 ## Compile
 
-Use [toolchain.cmake](toolchain.cmake).
+Use [toolchain.cmake](../toolchain.cmake).
 
 ## Reference
 - [Ubuntu to Raspberry Pi OS Cross C++ Development](https://tttapa.github.io/Pages/Raspberry-Pi/C++-Development-RPiOS/index.html)
