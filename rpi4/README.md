@@ -10,19 +10,14 @@ Hello, World!
 - spdlog
 - OpenSSL
 
-To install OpenCV, gRPC, and spdlog:
+To install these:
 
 ```shell
-sudo apt install libopencv-dev libgrpc++-dev protobuf-compiler-grpc libspdlog-dev
+sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev
+sudo apt install protobuf-compiler-grpc 
 ```
 
 To cross complie TFLite, run [build_tflite.sh](tools/build_tflite.sh) on the host computer.
-
-To install its dependencies:
-
-```shell
-sudo apt install libabsl-dev libflatbuffers-dev
-```
 
 ## Server
 

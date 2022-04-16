@@ -4,15 +4,15 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/include/**",
-                "/usr/include/opencv4/**"
+                "/var/lib/schroot/chroots/rpi-bullseye-arm64/usr/include/**",
+                "/var/lib/schroot/chroots/rpi-bullseye-arm64/usr/include/opencv4/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/g++",
+            "compilerPath": "/usr/bin/aarch64-linux-gnu-g++",
             "cStandard": "gnu17",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-arm64",
-            "configurationProvider": "ms-vscode.makefile-tools"
+            "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],
     "version": 4

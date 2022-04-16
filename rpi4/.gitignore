@@ -1,11 +1,2 @@
 # Make
-build
-bin
-
-# extra files
-model
-certs
-
-# gRPC
-src/*.pb.cc
-src/*.pb.h
+out

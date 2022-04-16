@@ -3,8 +3,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/imgproc.hpp>
-
-#include "log.h"
+#include <spdlog/spdlog.h>
 
 namespace rpi4
 {
@@ -51,7 +50,7 @@ namespace rpi4
     // clear buffer
     // TODO: any good solution? How to read the most latest one?
     SPDLOG_TRACE("Read");
-    //cap_.grab();
+    // cap_.grab();
     cap_.read(frame);
     // check if we succeeded
     if (frame.empty())
@@ -64,7 +63,7 @@ namespace rpi4
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
     cv::resize(frame, frame, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_LINEAR);
-    //cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+    // cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     SPDLOG_TRACE("Finish");
     return true;
   }

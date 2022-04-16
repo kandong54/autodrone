@@ -1,6 +1,6 @@
 #include "drone_app.h"
 
-#include "log.h"
+#include <spdlog/spdlog.h>
 
 namespace rpi4
 {
@@ -67,7 +67,8 @@ namespace rpi4
       SPDLOG_CRITICAL("Failed to init DroneApp!");
       return;
     }
-    thread_ = std::make_unique<std::thread>([this] { Run(); });
+    thread_ = std::make_unique<std::thread>([this]
+                                            { Run(); });
     thread_->detach();
   }
 } // namespace rpi4

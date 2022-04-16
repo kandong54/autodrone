@@ -11,9 +11,9 @@
 // #include <grpcpp/health_check_service_interface.h>
 #include <openssl/evp.h>
 #include <opencv2/imgcodecs.hpp>
+#include <spdlog/spdlog.h>
 
 #include "drone_app.h"
-#include "log.h"
 
 using autodrone::CameraReply_BoundingBox;
 using grpc::AuthContext;
@@ -163,14 +163,16 @@ namespace rpi4
     {
       SPDLOG_DEBUG("Loop start");
       // Read Image
-      drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
+      drone_app_->cv_1.wait(drone_lock, [this]
+                            { return drone_app_->cv_flag_1; });
       SPDLOG_TRACE("set image");
       buf.clear();
       cv::imencode(".jpg", drone_app_->frame, buf);
       reply.set_image(buf.data(), buf.size());
       SPDLOG_TRACE("set");
       // Bounding Box
-      drone_app_->cv_2.wait(drone_lock, [this] { return drone_app_->cv_flag_2; });
+      drone_app_->cv_2.wait(drone_lock, [this]
+                            { return drone_app_->cv_flag_2; });
       reply.clear_box();
       SPDLOG_TRACE("add box");
       size_t num_box = drone_app_->tflite->prediction.size();

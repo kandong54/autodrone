@@ -7,8 +7,7 @@
 #include "tensorflow/lite/model.h"
 #include <opencv2/imgproc.hpp>
 // #include "tensorflow/lite/optional_debug_tools.h"
-
-#include "log.h"
+#include <spdlog/spdlog.h>
 
 // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/examples/label_image/label_image.cc
 // https://www.tensorflow.org/lite/api_docs/cc/class/tflite/interpreter
@@ -71,7 +70,7 @@ namespace rpi4
     // Type
     input_type_ = input_tensor->type;
     output_type_ = output_tensor->type;
-    //Bytes
+    // Bytes
     input_bytes_ = input_tensor->bytes;
     output_bytes_ = output_tensor->bytes;
     // dims
