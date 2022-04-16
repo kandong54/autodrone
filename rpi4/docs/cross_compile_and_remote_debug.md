@@ -37,7 +37,7 @@ To install local deb, move files to /var/lib/schroot/chroots/rpi-bullseye-arm64/
 sudo sbuild-apt rpi-bullseye-arm64 apt-get install /root/*.deb
 ```
 
-To fix broken symbolic link
+To fix broken symbolic links:
 ```shell
 export LIB_PATH=/var/lib/schroot/chroots/rpi-bullseye-arm64/usr/lib/aarch64-linux-gnu
 sudo rm $LIB_PATH/libblas.so.3
