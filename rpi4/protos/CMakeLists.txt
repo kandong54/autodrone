@@ -17,10 +17,10 @@ add_library(proto
 
 # https://github.com/faaxm/exmpl-cmake-grpc/blob/master/proto/CMakeLists.txt
 protobuf_generate(TARGET proto LANGUAGE cpp)
-protobuf_generate(TARGET proto LANGUAGE grpc GENERATE_EXTENSIONS .grpc.pb.h .grpc.pb.cc PLUGIN "protoc-gen-grpc=grpc_cpp_plugin")
+protobuf_generate(TARGET proto LANGUAGE grpc GENERATE_EXTENSIONS .grpc.pb.h .grpc.pb.cc PLUGIN "protoc-gen-grpc=/usr/bin/grpc_cpp_plugin")
 
 target_include_directories(proto
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
+  INTERFACE ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 target_link_libraries(proto PRIVATE

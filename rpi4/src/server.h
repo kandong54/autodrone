@@ -4,18 +4,18 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/security/auth_metadata_processor.h>
 
-#include "drone.grpc.pb.h"
+#include "protos/drone.grpc.pb.h"
 
 using autodrone::CameraReply;
 using autodrone::Drone;
 using autodrone::HelloReply;
 using autodrone::HelloRequest;
 using google::protobuf::Empty;
+using grpc::AuthMetadataProcessor;
 using grpc::Server;
 using grpc::ServerContext;
 using grpc::ServerWriter;
 using grpc::Status;
-using grpc::AuthMetadataProcessor;
 
 namespace rpi4
 {
@@ -30,7 +30,7 @@ namespace rpi4
     std::string server_key_path_;
     std::string server_cert_path_;
     std::string password_;
-    std::string password_salt_; 
+    std::string password_salt_;
     std::unique_ptr<AuthMetadataProcessor> processor_;
 
   public:

@@ -19,7 +19,7 @@ include(FindPkgConfig)
 pkg_search_module(GRPCPP REQUIRED grpc++)
 pkg_search_module(TFLITE REQUIRED tflite)
 
-# Protobuf
+# Protos
 add_subdirectory(protos)
 
 add_executable(drone 
@@ -30,12 +30,14 @@ add_executable(drone
   src/tflite.cc
 )
 
+# spdlog
 target_compile_definitions(drone PRIVATE
   SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
 target_include_directories(drone PRIVATE
   ${OpenCV_INCLUDE_DIRS}
+  ${PROJECT_BINARY_DIR}
 )
 
 target_link_libraries(drone PRIVATE

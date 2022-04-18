@@ -27,7 +27,7 @@ sudo apt install build-essential g++-aarch64-linux-gnu
 Host:
 
 ```shell
-sudo apt install protobuf-compiler-grpc
+sudo apt install protobuf-compiler-grpc pkg-config
 sudo sbuild-apt rpi-bullseye-arm64 apt-get install # lib
 ```
 
