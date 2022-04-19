@@ -1,5 +1,7 @@
 # Cross Compile and Remote Debug
 
+System: Debian for WSL
+
 ## Create Arm64 Root Filesystem
 
 Host:
@@ -55,6 +57,27 @@ sudo apt install # lib
 ## Compile
 
 Use [toolchain.cmake](../toolchain.cmake).
+
+## Remote Debug
+
+Raspberry Pi:
+
+```shell
+sudo apt install gdbserver
+```
+
+Host:
+
+```shell
+sudo apt install gdb-multiarch
+```
+
+Add  these two lines to ~/.gdbinit
+
+```
+set sysroot /var/lib/schroot/chroots/rpi-bullseye-arm64
+set debug-file-directory /var/lib/schroot/chroots/rpi-bullseye-arm64/usr/lib/debug
+```
 
 ## Reference
 - [Ubuntu to Raspberry Pi OS Cross C++ Development](https://tttapa.github.io/Pages/Raspberry-Pi/C++-Development-RPiOS/index.html)

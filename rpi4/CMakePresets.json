@@ -2,7 +2,7 @@
     "version": 2,
     "configurePresets": [
         {
-            "name": "GCC Linux Arm64",
+            "name": "GCC_Linux_Arm64",
             "displayName": "GCC Linux Arm64",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
@@ -15,10 +15,10 @@
     ],
     "buildPresets": [
         {
-            "name": "GCC Linux Arm64",
+            "name": "GCC_Linux_Arm64",
             "description": "",
             "displayName": "",
-            "configurePreset": "GCC Linux Arm64",
+            "configurePreset": "GCC_Linux_Arm64",
             "jobs": 4
         }
     ]
