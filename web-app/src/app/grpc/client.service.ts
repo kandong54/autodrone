@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DroneClient } from '../../protos/DroneServiceClientPb';
-import { HelloRequest, CameraReply } from '../../protos/drone_pb';
-import { Empty } from 'google-protobuf/google/protobuf/empty_pb';
+import { HelloRequest, CameraReply, Empty } from '../../protos/drone_pb';
 import { ClientReadableStream } from 'grpc-web';
 
 export { ClientService, Server };

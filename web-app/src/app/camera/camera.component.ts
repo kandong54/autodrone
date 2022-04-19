@@ -79,7 +79,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
             // this.ctx.putImageData(image, 0, 0);
             // jpg
             let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
-            URL.revokeObjectURL(image.src)
+            URL.revokeObjectURL(image.src);
             image.src = URL.createObjectURL(blob);
             image.onload = () => {
               ctx.drawImage(image, 0, 0);
