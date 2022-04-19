@@ -21,11 +21,9 @@ namespace rpi4
   public:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<TFLite> tflite;
-    cv::Mat frame;
-    std::condition_variable cv_1;
-    std::condition_variable cv_2;
-    bool cv_flag_1;
-    bool cv_flag_2;
+    std::vector<uchar> frame;
+    std::condition_variable cv;
+    bool cv_flag;
 
   private:
     void Run();

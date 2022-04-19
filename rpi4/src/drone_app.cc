@@ -1,6 +1,7 @@
 #include "drone_app.h"
 
 #include <spdlog/spdlog.h>
+#include <opencv2/imgcodecs.hpp>
 
 namespace rpi4
 {
@@ -8,6 +9,7 @@ namespace rpi4
   {
     camera = std::make_unique<Camera>();
     tflite = std::make_unique<TFLite>();
+    frame.reserve(camera->out_height * camera->out_width * 3);
   }
 
   DroneApp::~DroneApp()
@@ -23,8 +25,7 @@ namespace rpi4
 
   void DroneApp::Run()
   {
-    cv_flag_1 = false;
-    cv_flag_2 = true;
+    cv_flag = false;
     cv::Mat tmp_frame;
     while (true)
     {
@@ -34,18 +35,18 @@ namespace rpi4
         SPDLOG_ERROR("Failed to capture image!");
         continue;
       }
-      tmp_frame.copyTo(frame);
-      cv_flag_1 = true;
-      cv_flag_2 = false;
-      cv_1.notify_all();
+      // compress image
+      cv_flag = false;
+      SPDLOG_TRACE("compress image");
+      frame.clear();
+      cv::imencode(".jpg", tmp_frame, frame);
       if (!tflite->Inference(tmp_frame))
       {
         SPDLOG_ERROR("Failed to inference image!");
         continue;
       }
-      cv_flag_1 = false;
-      cv_flag_2 = true;
-      cv_2.notify_all();
+      cv_flag = true;
+      cv.notify_all();
       SPDLOG_TRACE("Loop end");
     }
   }

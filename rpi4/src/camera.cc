@@ -16,8 +16,8 @@ namespace rpi4
     cap_height_ = 720;
     cap_fps_ = 5;
 
-    out_width_ = 640;
-    out_height_ = 640;
+    out_width = 640;
+    out_height = 640;
 
     lock_ = std::unique_lock<std::mutex>(mutex, std::defer_lock);
   }
@@ -62,7 +62,7 @@ namespace rpi4
     // TODO: add crop method.
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
-    cv::resize(frame, frame, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_LINEAR);
+    cv::resize(frame, frame, cv::Size(out_width, out_height), 0, 0, cv::INTER_LINEAR);
     // cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     SPDLOG_TRACE("Finish");
     return true;

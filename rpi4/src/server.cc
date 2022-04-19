@@ -10,7 +10,6 @@
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 // #include <grpcpp/health_check_service_interface.h>
 #include <openssl/evp.h>
-#include <opencv2/imgcodecs.hpp>
 #include <spdlog/spdlog.h>
 
 #include "drone_app.h"
@@ -148,35 +147,25 @@ namespace rpi4
   Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] const Empty *request, ServerWriter<CameraReply> *writer)
   {
     SPDLOG_INFO("GetCamera");
-    // std::unique_lock camera_lock(drone_app_->camera->mutex, std::defer_lock);
-    // std::unique_lock tflite_lock(drone_app_->tflite->mutex, std::defer_lock);
     // TODO: remove mutex
     std::mutex mutex;
     std::unique_lock drone_lock(mutex);
     CameraReply reply;
-    std::vector<uchar> buf;
     // TODO: drone_app_->tflite
-    buf.reserve(640 * 640 * 3);
-    // drone_app_->cv_1.wait(drone_lock, [this] { return drone_app_->cv_flag_1; });
     // size_t image_bytes = drone_app_->frame.total() * drone_app_->frame.elemSize();
     while (!context->IsCancelled())
     {
       SPDLOG_DEBUG("Loop start");
       // Read Image
-      drone_app_->cv_1.wait(drone_lock, [this]
-                            { return drone_app_->cv_flag_1; });
+      drone_app_->cv.wait(drone_lock, [this]
+                          { return drone_app_->cv_flag; });
       SPDLOG_TRACE("set image");
-      buf.clear();
-      cv::imencode(".jpg", drone_app_->frame, buf);
-      reply.set_image(buf.data(), buf.size());
-      SPDLOG_TRACE("set");
+      reply.set_image(drone_app_->frame.data(), drone_app_->frame.size());
       // Bounding Box
-      drone_app_->cv_2.wait(drone_lock, [this]
-                            { return drone_app_->cv_flag_2; });
-      reply.clear_box();
       SPDLOG_TRACE("add box");
+      reply.clear_box();
       size_t num_box = drone_app_->tflite->prediction.size();
-      for (size_t i = 0; i < num_box; i++)
+      for (size_t i = 0; i < num_box; i += kOutputNum)
       {
         CameraReply_BoundingBox *box = reply.add_box();
         box->set_x_center(drone_app_->tflite->prediction[i * kOutputNum + kXCenter]);
@@ -186,9 +175,12 @@ namespace rpi4
         box->set_confidence(drone_app_->tflite->prediction[i * kOutputNum + kConfidence]);
         box->set_class_(drone_app_->tflite->prediction[i * kOutputNum + kClass]);
       }
-      SPDLOG_TRACE("added");
+      SPDLOG_TRACE("send reply");
       writer->Write(reply);
       SPDLOG_TRACE("Loop end");
+      // Avoid fake wake
+      // TODO: better sulotion?
+      drone_app_->cv_flag = false;
     }
     return Status::OK;
   }
