@@ -2,13 +2,11 @@ syntax = "proto3";
 
 package autodrone;
 
-import "google/protobuf/empty.proto";
-
 // The greeting service definition.
 service Drone {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
-  rpc GetCamera (google.protobuf.Empty) returns (stream CameraReply) {}
+  rpc GetCamera (Empty) returns (stream CameraReply) {}
 }
 
 // The request message containing the user's name.
@@ -20,7 +18,6 @@ message HelloRequest {
 message HelloReply {
   string message = 1;
 }
-
 
 message CameraReply {
   message BoundingBox {
@@ -34,3 +31,6 @@ message CameraReply {
   bytes image = 1;
   repeated BoundingBox box = 2;
 }
+
+// import "google/protobuf/empty.proto";
+message Empty {}

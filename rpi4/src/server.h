@@ -8,9 +8,9 @@
 
 using autodrone::CameraReply;
 using autodrone::Drone;
+using autodrone::Empty;
 using autodrone::HelloReply;
 using autodrone::HelloRequest;
-using google::protobuf::Empty;
 using grpc::AuthMetadataProcessor;
 using grpc::Server;
 using grpc::ServerContext;
