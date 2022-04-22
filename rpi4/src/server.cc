@@ -164,8 +164,8 @@ namespace rpi4
       // Bounding Box
       SPDLOG_TRACE("add box");
       reply.clear_box();
-      size_t num_box = drone_app_->tflite->prediction.size();
-      for (size_t i = 0; i < num_box; i += kOutputNum)
+      size_t num_box = drone_app_->tflite->prediction.size() / kOutputNum;
+      for (size_t i = 0; i < num_box; i++)
       {
         CameraReply_BoundingBox *box = reply.add_box();
         box->set_x_center(drone_app_->tflite->prediction[i * kOutputNum + kXCenter]);

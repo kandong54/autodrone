@@ -2,10 +2,9 @@
 
 #include <thread>
 
-#include "tensorflow/lite/interpreter.h"
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
-#include <opencv2/imgproc.hpp>
+#include <tensorflow/lite/interpreter.h>
+#include <tensorflow/lite/kernels/register.h>
+#include <tensorflow/lite/model.h>
 // #include "tensorflow/lite/optional_debug_tools.h"
 #include <spdlog/spdlog.h>
 
@@ -21,7 +20,6 @@ namespace rpi4
     // Init parameter
     model_path_ = "./model/best-int8.tflite";
     threshold_ = 0.5;
-    lock_ = std::unique_lock<std::mutex>(mutex, std::defer_lock);
   }
 
   TFLite::~TFLite()
@@ -54,6 +52,7 @@ namespace rpi4
     // get input tensor metadata
     TfLiteTensor *input_tensor = interpreter_->input_tensor(0);
     TfLiteTensor *output_tensor = interpreter_->output_tensor(0);
+    input_data_ptr_ = &input_tensor->data;
     // quantization
     if (input_tensor->quantization.type == kTfLiteAffineQuantization)
     {
@@ -99,64 +98,62 @@ namespace rpi4
     SPDLOG_INFO("Loaded model {}", model_path_);
     return true;
   }
+
   bool TFLite::IsWork()
   {
     return (interpreter_->Invoke() == kTfLiteOk);
   }
+
   namespace
   {
     template <class T>
-    void AddPrediction(std::unique_ptr<tflite::Interpreter> const &interpreter, std::vector<float> &prediction, float threshold, int output_nums)
+    void AddPrediction(std::unique_ptr<tflite::Interpreter> const &interpreter, std::vector<float> &prediction, float threshold, int output_nums, float scale = 1, int zero_point = 0)
     {
+      T quant_threshold = threshold / scale + zero_point;
       T *output_tensor_ptr = interpreter->typed_output_tensor<T>(0);
       for (int i = 0; i < output_nums; i++)
       {
-        if (output_tensor_ptr[i * kOutputNum + kConfidence] >= threshold)
+        // TODO: width and height
+        // [1, 25200, 6]
+        // [Cx, Cy, width , height, confidence, class]
+        if (output_tensor_ptr[i * kOutputNum + kConfidence] >= quant_threshold)
         {
-          for (size_t j = 0; j < kOutputNum; j++)
+          for (int j = 0; j < kOutputNum; j++)
           {
-            prediction.push_back(static_cast<float>(output_tensor_ptr[i * kOutputNum + j]));
+            prediction.push_back((static_cast<float>(output_tensor_ptr[i * kOutputNum + j]) - zero_point) * scale);
           }
         }
       }
     }
-
   } // namespace
 
   bool TFLite::Inference(cv::Mat &frame)
   {
-    SPDLOG_TRACE("Read");
     // TODO: Check interpreter
-    cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     // Type convert, default CV_8UC3, kTfLiteUInt8
     SPDLOG_TRACE("Convert");
-    void *input_tensor_ptr = nullptr;
-    void *tmp_img_ptr = nullptr;
     switch (input_type_)
     {
     case kTfLiteUInt8:
     {
       if (is_quantization_)
       {
-        frame.convertTo(frame, CV_32FC3, 1 / 255.0);
-        frame.convertTo(frame, CV_8UC3, 1 / input_quant_scale_, input_quant_zero_point_);
+        frame.convertTo(frame, CV_8UC3, 1 / (input_quant_scale_ * 255), input_quant_zero_point_);
       }
-      input_tensor_ptr = interpreter_->typed_input_tensor<unsigned char>(0);
-      tmp_img_ptr = frame.ptr<unsigned char>(0);
+      else
+      {
+        frame.convertTo(frame, CV_8UC3, 1 / 255.0F);
+      }
       break;
     }
     case kTfLiteFloat32:
     {
-      frame.convertTo(frame, CV_32FC3, 1 / 255.0);
-      input_tensor_ptr = interpreter_->typed_input_tensor<float>(0);
-      tmp_img_ptr = frame.ptr<float>(0);
+      frame.convertTo(frame, CV_32FC3, 1 / 255.0F);
       break;
     }
     case kTfLiteFloat16:
     {
-      frame.convertTo(frame, CV_16FC3, 1 / 255.0);
-      input_tensor_ptr = interpreter_->typed_input_tensor<TfLiteFloat16>(0);
-      tmp_img_ptr = frame.ptr<uint16_t>(0);
+      frame.convertTo(frame, CV_16FC3, 1 / 255.0F);
       break;
     }
     default:
@@ -167,61 +164,44 @@ namespace rpi4
     }
     }
     // Load data
-    SPDLOG_TRACE("Memcpy");
-    memcpy(input_tensor_ptr, tmp_img_ptr, input_bytes_);
+    input_data_ptr_->data = frame.data;
     // Run!
     SPDLOG_TRACE("Invoke");
     interpreter_->Invoke();
     SPDLOG_TRACE("Output");
-    lock_.lock();
     prediction.clear();
-    // TODO: width and height
-    // [1, 25200, 6]
-    // [Cx, Cy, width , height, confidence, class]
-    if (is_quantization_)
+    switch (output_type_)
     {
-      unsigned char quant_threshold = threshold_ / output_quant_scale_ + output_quant_zero_point_;
-      unsigned char *output_tensor_ptr = interpreter_->typed_output_tensor<unsigned char>(0);
-      for (int i = 0; i < output_nums_; i++)
+    case kTfLiteUInt8:
+    {
+      if (is_quantization_)
       {
-        if (output_tensor_ptr[i * kOutputNum + kConfidence] >= quant_threshold)
-        {
-          for (size_t j = 0; j < kOutputNum; j++)
-          {
-            prediction.push_back((static_cast<float>(output_tensor_ptr[i * kOutputNum + j]) - output_quant_zero_point_) * output_quant_scale_);
-          }
-        }
+        AddPrediction<unsigned char>(interpreter_, prediction, threshold_, output_nums_, output_quant_scale_, output_quant_zero_point_);
       }
-    }
-    else
-    {
-      switch (output_type_)
-      {
-      case kTfLiteUInt8:
+      else
       {
         AddPrediction<unsigned char>(interpreter_, prediction, threshold_, output_nums_);
-        break;
       }
-      case kTfLiteFloat32:
-      {
-        AddPrediction<float>(interpreter_, prediction, threshold_, output_nums_);
-        break;
-      }
-      // case kTfLiteFloat16:
-      // {
-      //   AddPrediction<TfLiteFloat16>(interpreter_, prediction, threshold_, output_nums_);
-      //   break;
-      // }
-      default:
-      {
-        SPDLOG_CRITICAL("Unsupported type: ", input_type_);
-        return false;
-        break;
-      }
-      }
+      break;
     }
-    lock_.unlock();
-    SPDLOG_DEBUG("Total: {}", prediction.size() / kOutputNum);
+    case kTfLiteFloat32:
+    {
+      AddPrediction<float>(interpreter_, prediction, threshold_, output_nums_);
+      break;
+    }
+    // case kTfLiteFloat16:
+    // {
+    //   AddPrediction<TfLiteFloat16>(interpreter_, prediction, threshold_, output_nums_);
+    //   break;
+    // }
+    default:
+    {
+      SPDLOG_CRITICAL("Unsupported type: ", input_type_);
+      return false;
+      break;
+    }
+    }
+    SPDLOG_TRACE("Total: {}", prediction.size() / kOutputNum);
 
     return true;
   }

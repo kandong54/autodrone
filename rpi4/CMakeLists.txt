@@ -32,7 +32,7 @@ add_executable(drone
 
 # spdlog
 target_compile_definitions(drone PRIVATE
-  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
+  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
 target_include_directories(drone PRIVATE

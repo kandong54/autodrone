@@ -1,13 +1,12 @@
 #ifndef AUTODRONE_RPI4_TFLITE
 #define AUTODRONE_RPI4_TFLITE
 
+#include <memory>
 #include <vector>
-#include <thread>
-#include <mutex>
 
 #include <opencv2/core.hpp>
 #include <tensorflow/lite/interpreter.h>
-#include "tensorflow/lite/model.h"
+#include <tensorflow/lite/model.h>
 
 namespace rpi4
 {
@@ -31,10 +30,9 @@ namespace rpi4
     size_t input_bytes_ = 0;
     size_t output_bytes_ = 0;
     float threshold_ = 0.25;
-    std::unique_lock<std::mutex> lock_;
+    TfLitePtrUnion *input_data_ptr_ = nullptr;
 
   public:
-    std::mutex mutex;
     std::vector<float> prediction;
 
   public:

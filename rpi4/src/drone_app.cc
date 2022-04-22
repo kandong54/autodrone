@@ -1,7 +1,7 @@
 #include "drone_app.h"
 
-#include <spdlog/spdlog.h>
 #include <opencv2/imgcodecs.hpp>
+#include <spdlog/spdlog.h>
 
 namespace rpi4
 {

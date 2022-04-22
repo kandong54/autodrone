@@ -2,11 +2,9 @@
 #define AUTODRONE_RPI4_DRONE_APP
 
 #include <memory>
+#include <vector>
 #include <thread>
-#include <mutex>
 #include <condition_variable>
-
-#include <opencv2/core.hpp>
 
 #include "camera.h"
 #include "tflite.h"
