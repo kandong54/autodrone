@@ -23,7 +23,7 @@ namespace rpi4
   public:
     Camera();
     bool Open();
-    bool CaptureImage(cv::Mat &frame);
+    bool Capture(cv::Mat &frame);
     bool IsOpened();
   };
 

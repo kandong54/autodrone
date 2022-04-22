@@ -30,7 +30,7 @@ namespace rpi4
     while (true)
     {
       SPDLOG_DEBUG("Loop start");
-      if (!camera->CaptureImage(tmp_frame))
+      if (!camera->Capture(tmp_frame))
       {
         SPDLOG_ERROR("Failed to capture image!");
         continue;

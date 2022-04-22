@@ -40,11 +40,11 @@ namespace rpi4
     cap_.set(cv::CAP_PROP_CONVERT_RGB, true);
     // warmup capture
     cap_.grab();
-    SPDLOG_INFO("Opened camera {}", cap_device_);
+    SPDLOG_INFO("Opened");
     return true;
   }
 
-  bool Camera::CaptureImage(cv::Mat &frame)
+  bool Camera::Capture(cv::Mat &frame)
   {
     if (!cap_.isOpened())
       return false;
@@ -73,6 +73,5 @@ namespace rpi4
   {
     return cap_.isOpened();
   }
-
 
 } // namespace rpi4

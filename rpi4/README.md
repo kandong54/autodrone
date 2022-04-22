@@ -9,11 +9,12 @@ Hello, World!
 - TFLite
 - spdlog
 - OpenSSL
+- FFmpeg
 
 To install these:
 
 ```shell
-sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev
+sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev ffmpeg
 sudo apt install protobuf-compiler-grpc 
 ```
 
