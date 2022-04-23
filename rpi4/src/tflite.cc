@@ -2,6 +2,7 @@
 
 #include <thread>
 
+#include <opencv2/dnn/dnn.hpp>
 #include <tensorflow/lite/interpreter.h>
 #include <tensorflow/lite/kernels/register.h>
 #include <tensorflow/lite/model.h>
@@ -19,14 +20,18 @@ namespace rpi4
   {
     // Init parameter
     model_path_ = "./model/best-int8.tflite";
-    threshold_ = 0.5;
+    conf_threshold_ = 0.25;
+    iou_threshold_ = 0.45;
+
+    cap_width_ = 960;
+    cap_height_ = 720;
   }
 
   TFLite::~TFLite()
   {
   }
 
-  bool TFLite::Load()
+  int TFLite::Load()
   {
     // Create model from file. Note that the model instance must outlive the
     // interpreter instance.
@@ -35,19 +40,19 @@ namespace rpi4
     if (model_ == nullptr)
     {
       SPDLOG_CRITICAL("Failed to mmap  model {}!", model_path_);
-      return false;
+      return -1;
     }
     // Create an Interpreter with an InterpreterBuilder.
     tflite::ops::builtin::BuiltinOpResolver resolver;
     if (tflite::InterpreterBuilder(*model_, resolver)(&interpreter_) != kTfLiteOk)
     {
       SPDLOG_CRITICAL("Failed to build interpreter!");
-      return false;
+      return -1;
     }
     if (interpreter_->AllocateTensors() != kTfLiteOk)
     {
       SPDLOG_CRITICAL("Failed to allocate tensors!");
-      return false;
+      return -1;
     }
     // get input tensor metadata
     TfLiteTensor *input_tensor = interpreter_->input_tensor(0);
@@ -83,7 +88,10 @@ namespace rpi4
     // [Cx, Cy, width , height, confidence, class]
     TfLiteIntArray *output_dims = output_tensor->dims;
     output_nums_ = output_dims->data[1];
-    prediction.reserve(output_dims->data[1] * output_dims->data[2]);
+    class_nums_ = output_dims->data[2] - kClass;
+    boxes.reserve(output_dims->data[1]);
+    confs.reserve(output_dims->data[1]);
+    class_id.reserve(output_dims->data[1]);
     // SetNumThreads
     unsigned int threads_num = std::thread::hardware_concurrency();
     interpreter_->SetNumThreads(threads_num);
@@ -93,10 +101,10 @@ namespace rpi4
     if (interpreter_->Invoke() != kTfLiteOk)
     {
       SPDLOG_CRITICAL("Failed to invoke interpreter!");
-      return false;
+      return -1;
     }
-    SPDLOG_INFO("Loaded model {}", model_path_);
-    return true;
+    SPDLOG_INFO("Loaded");
+    return 0;
   }
 
   bool TFLite::IsWork()
@@ -104,30 +112,41 @@ namespace rpi4
     return (interpreter_->Invoke() == kTfLiteOk);
   }
 
-  namespace
+  template <class T>
+  void TFLite::AddPrediction()
   {
-    template <class T>
-    void AddPrediction(std::unique_ptr<tflite::Interpreter> const &interpreter, std::vector<float> &prediction, float threshold, int output_nums, float scale = 1, int zero_point = 0)
+    // https://github.com/itsnine/yolov5-onnxruntime/blob/master/src/detector.cpp
+    boxes.clear();
+    confs.clear();
+    class_id.clear();
+    indices.clear();
+    T quant_threshold = conf_threshold_ / output_quant_scale_ + output_quant_zero_point_;
+    T *output_tensor_ptr = interpreter_->typed_output_tensor<T>(0);
+    int step = static_cast<int>(kClass) + class_nums_;
+    for (int i = 0; i < output_nums_ * step; i += step)
     {
-      T quant_threshold = threshold / scale + zero_point;
-      T *output_tensor_ptr = interpreter->typed_output_tensor<T>(0);
-      for (int i = 0; i < output_nums; i++)
+      // [Cx, Cy, width , height, confidence, class1, class2, ...]
+      if (output_tensor_ptr[i + kConfidence] >= quant_threshold)
       {
-        // TODO: width and height
-        // [1, 25200, 6]
-        // [Cx, Cy, width , height, confidence, class]
-        if (output_tensor_ptr[i * kOutputNum + kConfidence] >= quant_threshold)
-        {
-          for (int j = 0; j < kOutputNum; j++)
-          {
-            prediction.push_back((static_cast<float>(output_tensor_ptr[i * kOutputNum + j]) - zero_point) * scale);
-          }
-        }
+        int center_x = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kXCenter]) - output_quant_zero_point_) * output_quant_scale_ * cap_width_);
+        int center_y = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kYCenter]) - output_quant_zero_point_) * output_quant_scale_ * cap_height_);
+        int width = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kWidth]) - output_quant_zero_point_) * output_quant_scale_ * cap_width_);
+        int height = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kHeight]) - output_quant_zero_point_) * output_quant_scale_ * cap_height_);
+        int left = center_x - width / 2;
+        int top = center_y - height / 2;
+        int id = std::distance(output_tensor_ptr + i + kClass, std::max_element(output_tensor_ptr + i + kClass, output_tensor_ptr + i + kClass + class_nums_));
+        float confidence = (static_cast<float>(output_tensor_ptr[i + kConfidence]) - output_quant_zero_point_) * output_quant_scale_;
+        float confidence_class = (static_cast<float>(output_tensor_ptr[i + kClass + id]) - output_quant_zero_point_) * output_quant_scale_;
+        boxes.emplace_back(left, top, width, height);
+        confs.emplace_back(confidence * confidence_class);
+        class_id.emplace_back(id);
       }
     }
-  } // namespace
+    // NMS
+    cv::dnn::NMSBoxes(boxes, confs, conf_threshold_, iou_threshold_, indices);
+  }
 
-  bool TFLite::Inference(cv::Mat &frame)
+  int TFLite::Inference(cv::Mat &frame)
   {
     // TODO: Check interpreter
     // Type convert, default CV_8UC3, kTfLiteUInt8
@@ -159,7 +178,7 @@ namespace rpi4
     default:
     {
       SPDLOG_CRITICAL("Unsupported type: ", input_type_);
-      return false;
+      return -1;
       break;
     }
     }
@@ -169,41 +188,33 @@ namespace rpi4
     SPDLOG_TRACE("Invoke");
     interpreter_->Invoke();
     SPDLOG_TRACE("Output");
-    prediction.clear();
     switch (output_type_)
     {
     case kTfLiteUInt8:
     {
-      if (is_quantization_)
-      {
-        AddPrediction<unsigned char>(interpreter_, prediction, threshold_, output_nums_, output_quant_scale_, output_quant_zero_point_);
-      }
-      else
-      {
-        AddPrediction<unsigned char>(interpreter_, prediction, threshold_, output_nums_);
-      }
+      AddPrediction<unsigned char>();
       break;
     }
     case kTfLiteFloat32:
     {
-      AddPrediction<float>(interpreter_, prediction, threshold_, output_nums_);
+      AddPrediction<float>();
       break;
     }
     // case kTfLiteFloat16:
     // {
-    //   AddPrediction<TfLiteFloat16>(interpreter_, prediction, threshold_, output_nums_);
+    //   AddPrediction<TfLiteFloat16>();
     //   break;
     // }
     default:
     {
       SPDLOG_CRITICAL("Unsupported type: ", input_type_);
-      return false;
+      return -1;
       break;
     }
     }
-    SPDLOG_TRACE("Total: {}", prediction.size() / kOutputNum);
+    SPDLOG_TRACE("Total: {}", indices.size());
 
-    return true;
+    return 0;
   }
 
 } // namespace rpi4

@@ -1,6 +1,8 @@
 #ifndef AUTODRONE_RPI4_CAMERA
 #define AUTODRONE_RPI4_CAMERA
 
+#include <string>
+
 #include <opencv2/videoio.hpp>
 
 namespace rpi4
@@ -22,9 +24,10 @@ namespace rpi4
 
   public:
     Camera();
-    bool Open();
-    bool Capture(cv::Mat &frame);
+    int Open();
+    int Capture(cv::Mat &frame);
     bool IsOpened();
+    void Compress(cv::Mat img, std::vector<uchar> &buf);
   };
 
 } // namespace rpi4

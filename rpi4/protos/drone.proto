@@ -21,12 +21,12 @@ message HelloReply {
 
 message CameraReply {
   message BoundingBox {
-    float x_center = 1;
-    float y_center = 2;
-    float width = 3;
-    float height = 4;
+    int32 left = 1;
+    int32 top = 2;
+    int32 width = 3;
+    int32 height = 4;
     float confidence = 5;
-    float class = 6;
+    int32 class = 6;
   }
   bytes image = 1;
   repeated BoundingBox box = 2;

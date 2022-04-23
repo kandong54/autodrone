@@ -27,19 +27,30 @@ namespace rpi4
     int input_width_ = 0;
     int input_channels_ = 0;
     int output_nums_ = 0;
+    int class_nums_ = 0;
     size_t input_bytes_ = 0;
     size_t output_bytes_ = 0;
-    float threshold_ = 0.25;
+    float conf_threshold_ = 0.25;
+    float iou_threshold_ = 0.45;
     TfLitePtrUnion *input_data_ptr_ = nullptr;
+    int cap_width_;
+    int cap_height_;
 
   public:
-    std::vector<float> prediction;
+    std::vector<cv::Rect> boxes;
+    std::vector<float> confs;
+    std::vector<int> class_id;
+    std::vector<int> indices;
+
+  private:
+    template <class T>
+    void AddPrediction();
 
   public:
     TFLite(/* args */);
     ~TFLite();
-    bool Load();
-    bool Inference(cv::Mat &image);
+    int Load();
+    int Inference(cv::Mat &image);
     bool IsWork();
   };
 
@@ -51,8 +62,7 @@ namespace rpi4
     kWidth = 2,
     kHeight = 3,
     kConfidence = 4,
-    kClass = 5,
-    kOutputNum = 6
+    kClass = 5
   };
 } // namespace rpi4
 #endif // AUTODRONE_RPI4_TFLITE

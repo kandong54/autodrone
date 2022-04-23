@@ -1,6 +1,5 @@
 #include "drone_app.h"
 
-#include <opencv2/imgcodecs.hpp>
 #include <spdlog/spdlog.h>
 
 namespace rpi4
@@ -25,22 +24,23 @@ namespace rpi4
 
   void DroneApp::Run()
   {
+    int ret;
     cv_flag = false;
     cv::Mat tmp_frame;
     while (true)
     {
       SPDLOG_DEBUG("Loop start");
-      if (!camera->Capture(tmp_frame))
+      ret = camera->Capture(tmp_frame);
+      if (ret)
       {
         SPDLOG_ERROR("Failed to capture image!");
         continue;
       }
       // compress image
       cv_flag = false;
-      SPDLOG_TRACE("compress image");
-      frame.clear();
-      cv::imencode(".jpg", tmp_frame, frame);
-      if (!tflite->Inference(tmp_frame))
+      camera->Compress(tmp_frame, frame);
+      ret = tflite->Inference(tmp_frame);
+      if (ret)
       {
         SPDLOG_ERROR("Failed to inference image!");
         continue;
@@ -53,12 +53,15 @@ namespace rpi4
 
   void DroneApp::BuildAndStart()
   {
-    if (!tflite->Load())
+    int ret;
+    ret = tflite->Load();
+    if (ret)
     {
       SPDLOG_CRITICAL("Failed to Load TFlite!");
       return;
     }
-    if (!camera->Open())
+    ret = camera->Open();
+    if (ret)
     {
       SPDLOG_CRITICAL("Failed to open camera!");
       return;
@@ -68,8 +71,11 @@ namespace rpi4
       SPDLOG_CRITICAL("Failed to init DroneApp!");
       return;
     }
-    thread_ = std::make_unique<std::thread>([this]
-                                            { Run(); });
+    thread_ = std::make_unique<std::thread>(
+        [this]
+        {
+          Run();
+        });
     thread_->detach();
   }
 } // namespace rpi4

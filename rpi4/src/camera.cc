@@ -2,6 +2,7 @@
 
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/videoio.hpp>
 #include <spdlog/spdlog.h>
 
@@ -20,7 +21,7 @@ namespace rpi4
     out_height = 640;
   }
 
-  bool Camera::Open()
+  int Camera::Open()
   {
     SPDLOG_INFO("Opening camera {}", cap_device_);
     // default GStreamer
@@ -28,7 +29,7 @@ namespace rpi4
     if (!cap_.isOpened())
     {
       SPDLOG_CRITICAL("Unable to open camera");
-      return false;
+      return -1;
     }
     // the setting must meet v4l2-ctl --list-formats-ext
     cap_.set(cv::CAP_PROP_FRAME_WIDTH, cap_width_);
@@ -41,13 +42,13 @@ namespace rpi4
     // warmup capture
     cap_.grab();
     SPDLOG_INFO("Opened");
-    return true;
+    return 0;
   }
 
-  bool Camera::Capture(cv::Mat &frame)
+  int Camera::Capture(cv::Mat &frame)
   {
     if (!cap_.isOpened())
-      return false;
+      return -1;
     // clear buffer
     // TODO: any good solution? How to read the most latest one?
     SPDLOG_TRACE("Read");
@@ -57,7 +58,7 @@ namespace rpi4
     if (frame.empty())
     {
       SPDLOG_ERROR("blank frame grabbed");
-      return false;
+      return -1;
     }
     SPDLOG_TRACE("Postprocess");
     // TODO: add crop method.
@@ -66,7 +67,7 @@ namespace rpi4
     cv::resize(frame, frame, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
     // cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
     SPDLOG_TRACE("Finish");
-    return true;
+    return 0;
   }
 
   bool Camera::IsOpened()
@@ -74,4 +75,10 @@ namespace rpi4
     return cap_.isOpened();
   }
 
+  void Camera::Compress(cv::Mat img, std::vector<uchar> &buf)
+  {
+    SPDLOG_TRACE("compress image");
+    buf.clear();
+    cv::imencode(".jpg", img, buf);
+  }
 } // namespace rpi4

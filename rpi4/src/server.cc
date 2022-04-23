@@ -164,16 +164,15 @@ namespace rpi4
       // Bounding Box
       SPDLOG_TRACE("add box");
       reply.clear_box();
-      size_t num_box = drone_app_->tflite->prediction.size() / kOutputNum;
-      for (size_t i = 0; i < num_box; i++)
+      for (int i : drone_app_->tflite->indices)
       {
         CameraReply_BoundingBox *box = reply.add_box();
-        box->set_x_center(drone_app_->tflite->prediction[i * kOutputNum + kXCenter]);
-        box->set_y_center(drone_app_->tflite->prediction[i * kOutputNum + kYCenter]);
-        box->set_width(drone_app_->tflite->prediction[i * kOutputNum + kWidth]);
-        box->set_height(drone_app_->tflite->prediction[i * kOutputNum + kHeight]);
-        box->set_confidence(drone_app_->tflite->prediction[i * kOutputNum + kConfidence]);
-        box->set_class_(drone_app_->tflite->prediction[i * kOutputNum + kClass]);
+        box->set_left(drone_app_->tflite->boxes[i].x);
+        box->set_top(drone_app_->tflite->boxes[i].y);
+        box->set_width(drone_app_->tflite->boxes[i].width);
+        box->set_height(drone_app_->tflite->boxes[i].height);
+        box->set_confidence(drone_app_->tflite->confs[i]);
+        box->set_class_(drone_app_->tflite->class_id[i]);
       }
       SPDLOG_TRACE("send reply");
       writer->Write(reply);
