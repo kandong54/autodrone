@@ -16,6 +16,8 @@ export class CameraComponent implements OnInit, AfterViewInit {
   imageWidth: number;
   imageHeight: number;
   imageStream: ClientReadableStream<CameraReply> | null = null;
+  interval: number;
+  lastTime: number;
 
   @ViewChild('myCanvas')
   private myCanvas: ElementRef = {} as ElementRef;
@@ -27,6 +29,8 @@ export class CameraComponent implements OnInit, AfterViewInit {
     this.cameraHeight = 720;
     this.imageWidth = 640;
     this.imageHeight = 640;
+    this.interval = 1000;
+    this.lastTime = Date.now();
   }
 
   ngOnInit(): void {
@@ -41,13 +45,10 @@ export class CameraComponent implements OnInit, AfterViewInit {
 
   }
 
-
   ngAfterViewInit(): void {
-    this.myCanvas.nativeElement.width = this.imageWidth;
-    this.myCanvas.nativeElement.height = this.imageHeight;
-    this.myCanvas.nativeElement.style.aspectRatio = this.cameraWidth / this.cameraHeight;
-    // this.myCanvas.nativeElement.style.width = '100%';
-    // this.myCanvas.nativeElement.style.height = 100 * this.cameraHeight / this.cameraWidth + '%';
+    this.myCanvas.nativeElement.width = this.cameraWidth;
+    this.myCanvas.nativeElement.height = this.cameraHeight;
+    // this.myCanvas.nativeElement.style.aspectRatio = this.cameraWidth / this.cameraHeight;
     var ctx = this.myCanvas.nativeElement.getContext('2d');
     ctx.strokeStyle = 'red';
     ctx.font = '48px Roboto';
@@ -61,38 +62,32 @@ export class CameraComponent implements OnInit, AfterViewInit {
           }
           this.imageStream.on('error', (err) => alert('Connection error: ' + err));
           this.imageStream.on('end', () => alert('Connection ends.'));
-          // this.imageStream.on('status', (status) => alert('Connection status: ' + status.details));
-          // let imageRGBA = new Uint8ClampedArray(this.imageWidth * this.imageHeight * 4);
-          // imageRGBA.fill(255);
           let image = new Image();
           this.imageStream.on('data', (response) => {
+            // fps
+            let thisTime = Date.now();
+            let delta = thisTime - this.lastTime;
+            this.lastTime = thisTime;
+            let k = 0.5;
+            this.interval = this.interval * k + delta * (1 - k);
             let imageRGB = response.getImage_asU8();
             let boxes = response.getBoxList();
             // TODO: offscreen render
-            // raw data
-            // for (let iRGBA = 0, iRGB = 0; iRGBA < imageRGBA.length; iRGBA += 4, iRGB += 3) {
-            //   imageRGBA[iRGBA] = imageRGB[iRGB];
-            //   imageRGBA[iRGBA + 1] = imageRGB[iRGB + 1];
-            //   imageRGBA[iRGBA + 2] = imageRGB[iRGB + 2];
-            // }
-            // let image = new ImageData(imageRGBA, this.imageWidth, this.imageHeight);
-            // this.ctx.putImageData(image, 0, 0);
             // jpg
             let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
             URL.revokeObjectURL(image.src);
             image.src = URL.createObjectURL(blob);
             image.onload = () => {
-              ctx.drawImage(image, 0, 0);
+              ctx.drawImage(image, 0, 0, this.imageWidth, this.imageHeight, 0, 0, this.cameraWidth, this.cameraHeight);
+              ctx.fillText('FPS: ' + (1000 / this.interval).toFixed(2), 10, 50);
               for (const box of boxes) {
-                let xCenter = box.getXCenter() * this.imageWidth;
-                let yCenter = box.getYCenter() * this.imageHeight;
-                let width = box.getWidth() * this.imageWidth;
-                let height = box.getHeight() * this.imageHeight;
-                let x = xCenter - width / 2;
-                let y = yCenter - height / 2;
+                let x = box.getLeft();
+                let y = box.getTop();
+                let width = box.getWidth();
+                let height = box.getHeight();
                 ctx.strokeRect(x, y, width, height);
                 let confidence = box.getConfidence();
-                ctx.fillText(Math.round(confidence * 100) + '%', x, y);
+                ctx.fillText(Math.round(confidence * 100) + '%', x, y + height);
               }
             }
           });
