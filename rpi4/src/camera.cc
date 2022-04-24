@@ -1,10 +1,16 @@
 #include "camera.h"
 
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/videoio.hpp>
 #include <spdlog/spdlog.h>
+extern "C"
+{
+#include <libavutil/opt.h>
+}
 
 namespace rpi4
 {
@@ -63,6 +69,44 @@ namespace rpi4
     }
     return 0;
   }
+  namespace
+  {
+    typedef struct V4L2m2mContext
+    {
+      char devname[PATH_MAX];
+      int fd;
+    } V4L2m2mContext;
+
+    typedef struct V4L2m2mPriv
+    {
+      AVClass *class2;
+
+      V4L2m2mContext *context;
+      AVBufferRef *context_ref;
+
+      int num_output_buffers;
+      int num_capture_buffers;
+    } V4L2m2mPriv;
+
+    // https://github.com/FFmpeg/FFmpeg/blob/master/libavcodec/v4l2_m2m_enc.c
+    void SetCtrl(int fd, unsigned int id, signed int value)
+    {
+      struct v4l2_ext_controls ctrls = {{0}};
+      struct v4l2_ext_control ctrl = {0};
+
+      /* set ctrls */
+      ctrls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+      ctrls.controls = &ctrl;
+      ctrls.count = 1;
+
+      /* set ctrl*/
+      ctrl.value = value;
+      ctrl.id = id;
+
+      if (ioctl(fd, VIDIOC_S_EXT_CTRLS, &ctrls) < 0)
+        SPDLOG_CRITICAL("Set ctrl failed");
+    }
+  } // namespace
   int Camera::InitEncoder()
   {
     // https://git.ffmpeg.org/gitweb/ffmpeg.git/blob/HEAD:/doc/examples/encode_video.c
@@ -70,7 +114,7 @@ namespace rpi4
     const char *codec_name = "h264_v4l2m2m";
     const AVCodec *codec;
     int ret;
-    video_time_ = 0;
+    video_timestamp = 0;
     /* find the mpeg1video encoder */
     codec = avcodec_find_encoder_by_name(codec_name);
     if (!codec)
@@ -111,7 +155,13 @@ namespace rpi4
       SPDLOG_CRITICAL("Could not open codec");
       return -1;
     }
+    V4L2m2mPriv *priv = static_cast<V4L2m2mPriv *>(codec_ctx_->priv_data);
+    V4L2m2mContext *v4l2_ctx = priv->context;
+    codec_fd_ = v4l2_ctx->fd;
 
+    // SetCtrl(codec_fd_, V4L2_CID_MPEG_VIDEO_BITRATE_MODE, V4L2_MPEG_VIDEO_BITRATE_MODE_VBR);
+    // SetCtrl(codec_fd_, V4L2_CID_MPEG_VIDEO_BITRATE, 10000000);
+    SetCtrl(codec_fd_, V4L2_CID_MPEG_VIDEO_H264_I_PERIOD, h264_i_frame_period);
     frame_ = av_frame_alloc();
     if (!frame_)
     {
@@ -213,8 +263,8 @@ namespace rpi4
     // TODO: memcopy?
     sws_scale(conversion_, &mat_resize_.data, cvLinesizes, 0, out_height,
               frame_->data, frame_->linesize);
-    frame_->pts = video_time_;
-    video_time_++;
+    frame_->pts = video_timestamp;
+    video_timestamp++;
     SPDLOG_TRACE("Send frame {} ", frame_->pts);
     ret = avcodec_send_frame(codec_ctx_, frame_);
     if (ret < 0)

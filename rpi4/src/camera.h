@@ -28,8 +28,9 @@ namespace rpi4
     int bit_rate_;
     // hardware defauft FPS
     const int video_fps_ = 30;
-    int64_t video_time_;
+
     AVCodecContext *codec_ctx_ = nullptr;
+    int codec_fd_;
     AVFrame *frame_ = nullptr;
     SwsContext *conversion_ = nullptr;
 
@@ -38,6 +39,8 @@ namespace rpi4
     int out_height;
     // std::vector<uchar> encoded;
     AVPacket *packet = nullptr;
+    int h264_i_frame_period = 10;
+    int64_t video_timestamp;
 
   public:
     Camera();
