@@ -25,6 +25,9 @@ namespace rpi4
 
     out_width = 640;
     out_height = 640;
+
+    jpg_quality_ = 80;
+    jpg_params_ = {cv::IMWRITE_JPEG_QUALITY, jpg_quality_};
   }
 
   int Camera::Open()
@@ -77,7 +80,7 @@ namespace rpi4
     cv::resize(mat_cap_, mat_resize_, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
     SPDLOG_TRACE("Encode image");
     encoded.clear();
-    cv::imencode(".jpg", mat_resize_, encoded);
+    cv::imencode(".jpg", mat_resize_, encoded, jpg_params_);
     // TODO: move BGR2RGB
     SPDLOG_TRACE("Color");
     cv::cvtColor(mat_resize_, mat, cv::COLOR_BGR2RGB);

@@ -25,6 +25,8 @@ namespace rpi4
     double cap_fps_;
     cv::Mat mat_cap_;
     cv::Mat mat_resize_;
+    int jpg_quality_;
+    std::vector<int> jpg_params_;
 
   public:
     int out_width;
