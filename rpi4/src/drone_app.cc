@@ -43,7 +43,6 @@ namespace rpi4
         SPDLOG_ERROR("Failed to inference image!");
         continue;
       }
-      camera->GetEncoded();
       cv_flag = true;
       cv.notify_all();
       SPDLOG_TRACE("Loop end");

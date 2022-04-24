@@ -29,8 +29,7 @@ message CameraReply {
     int32 class = 6;
   }
   bytes image = 1;
-  int64 timestamp = 2;
-  repeated BoundingBox box = 3;
+  repeated BoundingBox box = 2;
 }
 
 // import "google/protobuf/empty.proto";

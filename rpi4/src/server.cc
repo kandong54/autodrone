@@ -161,7 +161,6 @@ namespace rpi4
                           { return drone_app_->cv_flag; });
       SPDLOG_TRACE("set image");
       reply.set_image(drone_app_->camera->encoded.data(), drone_app_->camera->encoded.size());
-      reply.set_timestamp(drone_app_->camera->video_timestamp);
       // Bounding Box
       SPDLOG_TRACE("add box");
       reply.clear_box();
