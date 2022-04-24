@@ -2,6 +2,7 @@
 #define AUTODRONE_RPI4_CAMERA
 
 #include <string>
+#include <vector>
 
 #include <opencv2/videoio.hpp>
 
@@ -18,17 +19,18 @@ namespace rpi4
     int cap_height_;
     double cap_fps_;
     cv::Mat mat_cap_;
+    cv::Mat mat_resize_;
 
   public:
     int out_width;
     int out_height;
+    std::vector<uchar> encoded;
 
   public:
     Camera();
     int Open();
     int Capture(cv::Mat &mat);
     bool IsOpened();
-    void Compress(cv::Mat &img, std::vector<uchar> &buf);
   };
 
 } // namespace rpi4

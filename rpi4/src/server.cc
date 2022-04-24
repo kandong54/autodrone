@@ -159,8 +159,8 @@ namespace rpi4
       // Read Image
       drone_app_->cv.wait(drone_lock, [this]
                           { return drone_app_->cv_flag; });
-      SPDLOG_TRACE("set image");
-      reply.set_image(drone_app_->frame.data(), drone_app_->frame.size());
+      SPDLOG_TRACE("set image {}", drone_app_->camera->encoded.size());
+      reply.set_image(drone_app_->camera->encoded.data(), drone_app_->camera->encoded.size());
       // Bounding Box
       SPDLOG_TRACE("add box");
       reply.clear_box();

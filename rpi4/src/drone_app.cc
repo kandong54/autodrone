@@ -8,7 +8,6 @@ namespace rpi4
   {
     camera = std::make_unique<Camera>();
     tflite = std::make_unique<TFLite>();
-    frame.reserve(camera->out_height * camera->out_width * 3);
   }
 
   DroneApp::~DroneApp()
@@ -38,7 +37,6 @@ namespace rpi4
       }
       // compress image
       cv_flag = false;
-      camera->Compress(tmp_frame, frame);
       ret = tflite->Inference(tmp_frame);
       if (ret)
       {

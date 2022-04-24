@@ -63,11 +63,17 @@ namespace rpi4
       SPDLOG_ERROR("blank frame grabbed");
       return -1;
     }
-    SPDLOG_TRACE("Postprocess");
+    SPDLOG_TRACE("Resize");
     // TODO: add crop method.
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
-    cv::resize(mat_cap_, mat, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
+    cv::resize(mat_cap_, mat_resize_, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
+    SPDLOG_TRACE("Compress image");
+    encoded.clear();
+    cv::imencode(".jpg", mat_resize_, encoded);
+    // TODO: move BGR2RGB
+    SPDLOG_TRACE("Color");
+    cv::cvtColor(mat_resize_, mat, cv::COLOR_BGR2RGB);
     SPDLOG_TRACE("Finish");
     return 0;
   }
@@ -77,12 +83,4 @@ namespace rpi4
     return cap_.isOpened();
   }
 
-  void Camera::Compress(cv::Mat &img, std::vector<uchar> &buf)
-  {
-    SPDLOG_TRACE("compress image");
-    buf.clear();
-    cv::imencode(".jpg", img, buf);
-    // TODO: move BGR2RGB
-    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-  }
 } // namespace rpi4

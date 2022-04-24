@@ -2,7 +2,6 @@
 #define AUTODRONE_RPI4_DRONE_APP
 
 #include <memory>
-#include <vector>
 #include <thread>
 #include <condition_variable>
 
@@ -19,7 +18,6 @@ namespace rpi4
   public:
     std::unique_ptr<Camera> camera;
     std::unique_ptr<TFLite> tflite;
-    std::vector<uchar> frame;
     std::condition_variable cv;
     bool cv_flag;
 
