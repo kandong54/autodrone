@@ -5,6 +5,11 @@
 #include <vector>
 
 #include <opencv2/videoio.hpp>
+extern "C"
+{
+#include <libavcodec/avcodec.h>
+#include <libswscale/swscale.h>
+}
 
 namespace rpi4
 {
@@ -20,17 +25,29 @@ namespace rpi4
     double cap_fps_;
     cv::Mat mat_cap_;
     cv::Mat mat_resize_;
+    int bit_rate_;
+    // hardware defauft FPS
+    const int video_fps_ = 30;
+    int64_t video_time_;
+    AVCodecContext *codec_ctx_ = nullptr;
+    AVFrame *frame_ = nullptr;
+    SwsContext *conversion_ = nullptr;
 
   public:
     int out_width;
     int out_height;
-    std::vector<uchar> encoded;
+    // std::vector<uchar> encoded;
+    AVPacket *packet = nullptr;
 
   public:
     Camera();
+    ~Camera();
     int Open();
     int Capture(cv::Mat &mat);
     bool IsOpened();
+    int GetEncoded();
+    int InitEncoder();
+    void DelEncoder();
   };
 
 } // namespace rpi4

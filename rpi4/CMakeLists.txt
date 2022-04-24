@@ -18,6 +18,7 @@ include(FindPkgConfig)
 # find_package(gRPC CONFIG REQUIRED)
 pkg_search_module(GRPCPP REQUIRED grpc++)
 pkg_search_module(TFLITE REQUIRED tflite)
+pkg_check_modules(LIBAV REQUIRED libavcodec libavutil libswscale)
 
 # Protos
 add_subdirectory(protos)
@@ -47,6 +48,7 @@ target_link_libraries(drone PRIVATE
   OpenSSL::Crypto
   ${GRPCPP_LIBRARIES}
   ${TFLITE_LIBRARIES}
+  ${LIBAV_LIBRARIES}
 )
 
 # # CPack
