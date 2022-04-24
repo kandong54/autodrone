@@ -35,6 +35,7 @@ namespace rpi4
     TfLitePtrUnion *input_data_ptr_ = nullptr;
     int cap_width_;
     int cap_height_;
+    cv::Mat mat_convert;
 
   public:
     std::vector<cv::Rect> boxes;
@@ -50,7 +51,7 @@ namespace rpi4
     TFLite(/* args */);
     ~TFLite();
     int Load();
-    int Inference(cv::Mat &image);
+    int Inference(cv::Mat image);
     bool IsWork();
   };
 

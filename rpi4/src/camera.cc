@@ -34,18 +34,21 @@ namespace rpi4
     // the setting must meet v4l2-ctl --list-formats-ext
     cap_.set(cv::CAP_PROP_FRAME_WIDTH, cap_width_);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, cap_height_);
+    // // MJPG
+    // cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     cap_.set(cv::CAP_PROP_FPS, cap_fps_);
     // reduce buffer size so that we can read the most latest one
     cap_.set(cv::CAP_PROP_BUFFERSIZE, 1);
-    // default: BGR
-    cap_.set(cv::CAP_PROP_CONVERT_RGB, true);
+    // // read raw data
+    // cap_.set(cv::CAP_PROP_CONVERT_RGB, false);
+    // cap_.set(cv::CAP_PROP_FORMAT, -1);
     // warmup capture
     cap_.grab();
     SPDLOG_INFO("Opened");
     return 0;
   }
 
-  int Camera::Capture(cv::Mat &frame)
+  int Camera::Capture(cv::Mat &mat)
   {
     if (!cap_.isOpened())
       return -1;
@@ -53,9 +56,9 @@ namespace rpi4
     // TODO: any good solution? How to read the most latest one?
     SPDLOG_TRACE("Read");
     // ap_.grab();
-    cap_.read(frame);
+    cap_.read(mat_cap_);
     // check if we succeeded
-    if (frame.empty())
+    if (mat_cap_.empty())
     {
       SPDLOG_ERROR("blank frame grabbed");
       return -1;
@@ -64,8 +67,7 @@ namespace rpi4
     // TODO: add crop method.
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
-    cv::resize(frame, frame, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
-    // cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+    cv::resize(mat_cap_, mat, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
     SPDLOG_TRACE("Finish");
     return 0;
   }
@@ -75,10 +77,12 @@ namespace rpi4
     return cap_.isOpened();
   }
 
-  void Camera::Compress(cv::Mat img, std::vector<uchar> &buf)
+  void Camera::Compress(cv::Mat &img, std::vector<uchar> &buf)
   {
     SPDLOG_TRACE("compress image");
     buf.clear();
     cv::imencode(".jpg", img, buf);
+    // TODO: move BGR2RGB
+    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
   }
 } // namespace rpi4

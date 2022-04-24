@@ -16,7 +16,8 @@ namespace rpi4
     int cap_device_;
     int cap_width_;
     int cap_height_;
-    int cap_fps_;
+    double cap_fps_;
+    cv::Mat mat_cap_;
 
   public:
     int out_width;
@@ -25,9 +26,9 @@ namespace rpi4
   public:
     Camera();
     int Open();
-    int Capture(cv::Mat &frame);
+    int Capture(cv::Mat &mat);
     bool IsOpened();
-    void Compress(cv::Mat img, std::vector<uchar> &buf);
+    void Compress(cv::Mat &img, std::vector<uchar> &buf);
   };
 
 } // namespace rpi4

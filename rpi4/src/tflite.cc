@@ -146,7 +146,7 @@ namespace rpi4
     cv::dnn::NMSBoxes(boxes, confs, conf_threshold_, iou_threshold_, indices);
   }
 
-  int TFLite::Inference(cv::Mat &frame)
+  int TFLite::Inference(cv::Mat frame)
   {
     // TODO: Check interpreter
     // Type convert, default CV_8UC3, kTfLiteUInt8
@@ -157,22 +157,22 @@ namespace rpi4
     {
       if (is_quantization_)
       {
-        frame.convertTo(frame, CV_8UC3, 1 / (input_quant_scale_ * 255), input_quant_zero_point_);
+        frame.convertTo(mat_convert, CV_8UC3, 1 / (input_quant_scale_ * 255), input_quant_zero_point_);
       }
       else
       {
-        frame.convertTo(frame, CV_8UC3, 1 / 255.0F);
+        frame.convertTo(mat_convert, CV_8UC3, 1 / 255.0F);
       }
       break;
     }
     case kTfLiteFloat32:
     {
-      frame.convertTo(frame, CV_32FC3, 1 / 255.0F);
+      frame.convertTo(mat_convert, CV_32FC3, 1 / 255.0F);
       break;
     }
     case kTfLiteFloat16:
     {
-      frame.convertTo(frame, CV_16FC3, 1 / 255.0F);
+      frame.convertTo(mat_convert, CV_16FC3, 1 / 255.0F);
       break;
     }
     default:
@@ -183,7 +183,7 @@ namespace rpi4
     }
     }
     // Load data
-    input_data_ptr_->data = frame.data;
+    input_data_ptr_->data = mat_convert.data;
     // Run!
     SPDLOG_TRACE("Invoke");
     interpreter_->Invoke();
