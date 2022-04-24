@@ -59,7 +59,6 @@ export class CameraComponent implements OnInit, AfterViewInit {
     this.updateFps();
     // read
     let imageRGB = response.getImage_asU8();
-    let timestamp = response.getTimestamp();
     let boxes = response.getBoxList();
     let image = new Image();
     // TODO: offscreen render
