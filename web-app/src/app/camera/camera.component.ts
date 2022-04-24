@@ -29,7 +29,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
     this.cameraHeight = 720;
     this.imageWidth = 640;
     this.imageHeight = 640;
-    this.interval = 1000;
+    this.interval = 230;
     this.lastTime = Date.now();
   }
 
@@ -68,7 +68,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
             let thisTime = Date.now();
             let delta = thisTime - this.lastTime;
             this.lastTime = thisTime;
-            let k = 0.5;
+            let k = 0.9;
             this.interval = this.interval * k + delta * (1 - k);
             let imageRGB = response.getImage_asU8();
             let boxes = response.getBoxList();
