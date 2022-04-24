@@ -18,6 +18,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
   imageStream: ClientReadableStream<CameraReply> | null = null;
   interval: number;
   lastTime: number;
+  context2D: CanvasRenderingContext2D | null = null;
 
   @ViewChild('myCanvas')
   private myCanvas: ElementRef = {} as ElementRef;
@@ -45,53 +46,61 @@ export class CameraComponent implements OnInit, AfterViewInit {
 
   }
 
+  updateFps(): void {
+    let thisTime = Date.now();
+    let delta = thisTime - this.lastTime;
+    this.lastTime = thisTime;
+    let k = 0.9;
+    this.interval = this.interval * k + delta * (1 - k);
+  }
+
+  handleCamera(response: CameraReply): void {
+    // fps
+    this.updateFps();
+    // read
+    let imageRGB = response.getImage_asU8();
+    let timestamp = response.getTimestamp();
+    let boxes = response.getBoxList();
+    let image = new Image();
+    // TODO: offscreen render
+    // jpg
+    let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
+    image.src = URL.createObjectURL(blob);
+    image.onload = () => {
+      if (this.context2D === null) {
+        return;
+      }
+      this.context2D.drawImage(image, 0, 0, this.imageWidth, this.imageHeight, 0, 0, this.cameraWidth, this.cameraHeight);
+      this.context2D.fillText('FPS: ' + (1000 / this.interval).toFixed(2), 10, 50);
+      for (const box of boxes) {
+        let x = box.getLeft();
+        let y = box.getTop();
+        let width = box.getWidth();
+        let height = box.getHeight();
+        this.context2D.strokeRect(x, y, width, height);
+        let confidence = box.getConfidence();
+        this.context2D.fillText(Math.round(confidence * 100) + '%', x, y + height);
+      }
+      URL.revokeObjectURL(image.src);
+    }
+  }
+
   ngAfterViewInit(): void {
     this.myCanvas.nativeElement.width = this.cameraWidth;
     this.myCanvas.nativeElement.height = this.cameraHeight;
     // this.myCanvas.nativeElement.style.aspectRatio = this.cameraWidth / this.cameraHeight;
-    var ctx = this.myCanvas.nativeElement.getContext('2d');
-    ctx.strokeStyle = 'red';
-    ctx.font = '48px Roboto';
-    this.clientService.connect()
-      .then((result) => {
-        if (result === true) {
-          this.imageStream = this.clientService.getCamera();
-          if (this.imageStream === null) {
-            alert('Failed to get camera data!');
-            return;
-          }
-          this.imageStream.on('error', (err) => alert('Connection error: ' + err));
-          this.imageStream.on('end', () => alert('Connection ends.'));
-          let image = new Image();
-          this.imageStream.on('data', (response) => {
-            // fps
-            let thisTime = Date.now();
-            let delta = thisTime - this.lastTime;
-            this.lastTime = thisTime;
-            let k = 0.9;
-            this.interval = this.interval * k + delta * (1 - k);
-            let imageRGB = response.getImage_asU8();
-            let boxes = response.getBoxList();
-            // TODO: offscreen render
-            // jpg
-            let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
-            URL.revokeObjectURL(image.src);
-            image.src = URL.createObjectURL(blob);
-            image.onload = () => {
-              ctx.drawImage(image, 0, 0, this.imageWidth, this.imageHeight, 0, 0, this.cameraWidth, this.cameraHeight);
-              ctx.fillText('FPS: ' + (1000 / this.interval).toFixed(2), 10, 50);
-              for (const box of boxes) {
-                let x = box.getLeft();
-                let y = box.getTop();
-                let width = box.getWidth();
-                let height = box.getHeight();
-                ctx.strokeRect(x, y, width, height);
-                let confidence = box.getConfidence();
-                ctx.fillText(Math.round(confidence * 100) + '%', x, y + height);
-              }
-            }
-          });
-        }
-      });
+    this.context2D = this.myCanvas.nativeElement.getContext('2d');
+    if (this.context2D) {
+      this.context2D.strokeStyle = 'red';
+      this.context2D.font = '48px Roboto';
+    }
+    this.imageStream = this.clientService.getCamera();
+    if (this.imageStream === null) {
+      alert('Failed to get camera data!');
+      return;
+    }
+    this.imageStream.on('error', (err) => alert('Connection error: ' + err));
+    this.imageStream.on('end', () => alert('Connection ends.'));
+    this.imageStream.on('data', (response) => this.handleCamera(response));
   }
 }
