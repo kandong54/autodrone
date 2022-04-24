@@ -37,7 +37,7 @@ namespace rpi4
   public:
     int out_width;
     int out_height;
-    // std::vector<uchar> encoded;
+    std::vector<uchar> encoded;
     AVPacket *packet = nullptr;
     int h264_i_frame_period = 10;
     int64_t video_timestamp;

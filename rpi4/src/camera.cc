@@ -228,6 +228,9 @@ namespace rpi4
       }
 
       SPDLOG_TRACE("Read packet {} (size={})", packet->pts, packet->size);
+      // TODO: avoid memcpy
+      encoded.clear();
+      encoded.assign(packet->data, packet->data + packet->size);
       // fwrite(packet->data, 1, packet->size, f);
       av_packet_unref(packet);
     }
@@ -266,6 +269,7 @@ namespace rpi4
     frame_->pts = video_timestamp;
     video_timestamp++;
     SPDLOG_TRACE("Send frame {} ", frame_->pts);
+    // SetCtrl(codec_fd_, V4L2_CID_MPEG_VIDEO_FORCE_KEY_FRAME, 0);
     ret = avcodec_send_frame(codec_ctx_, frame_);
     if (ret < 0)
     {
