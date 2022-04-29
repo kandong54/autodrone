@@ -84,11 +84,28 @@ export class CameraComponent implements OnInit, AfterViewInit {
     }
   }
 
+  resizeCanvas(canvas: HTMLCanvasElement, ratio: number): void {
+    // Get the size of remaining screen
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    let width = canvas.offsetWidth;
+    let height = canvas.offsetHeight;
+    if (width / height > ratio) {
+      canvas.style.width = Math.floor(height * ratio) + 'px';
+    } else {
+      canvas.style.height = Math.floor(width / ratio) + 'px';
+    }
+    // canvas.style.width = '50%';
+    // canvas.style.height = '50%';
+  }
+
   ngAfterViewInit(): void {
     this.myCanvas.nativeElement.width = this.cameraWidth;
     this.myCanvas.nativeElement.height = this.cameraHeight;
-    // this.myCanvas.nativeElement.style.aspectRatio = this.cameraWidth / this.cameraHeight;
     this.context2D = this.myCanvas.nativeElement.getContext('2d');
+    this.resizeCanvas(this.myCanvas.nativeElement, this.cameraWidth / this.cameraHeight);
+    window.addEventListener("resize", () =>
+      this.resizeCanvas(this.myCanvas.nativeElement, this.cameraWidth / this.cameraHeight));
     if (this.context2D) {
       // Stroke
       this.context2D.strokeStyle = 'red';
