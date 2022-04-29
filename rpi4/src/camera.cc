@@ -19,12 +19,12 @@ namespace rpi4
   {
     // init parameters
     cap_device_ = 0;
-    cap_width_ = 960;
-    cap_height_ = 720;
+    cap_width = 960;
+    cap_height = 720;
     cap_fps_ = 7.5;
-
-    out_width = 640;
-    out_height = 640;
+    // TODO: get from TFlite
+    out_width_ = 640;
+    out_height_ = 640;
 
     jpg_quality_ = 80;
     jpg_params_ = {cv::IMWRITE_JPEG_QUALITY, jpg_quality_};
@@ -42,8 +42,8 @@ namespace rpi4
       return -1;
     }
     // the setting must meet v4l2-ctl --list-formats-ext
-    cap_.set(cv::CAP_PROP_FRAME_WIDTH, cap_width_);
-    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, cap_height_);
+    cap_.set(cv::CAP_PROP_FRAME_WIDTH, cap_width);
+    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, cap_height);
     // // MJPG
     // cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
     cap_.set(cv::CAP_PROP_FPS, cap_fps_);
@@ -77,7 +77,7 @@ namespace rpi4
     // TODO: add crop method.
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
-    cv::resize(mat_cap_, mat_resize_, cv::Size(out_width, out_height), 0, 0, cv::INTER_NEAREST);
+    cv::resize(mat_cap_, mat_resize_, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_NEAREST);
     SPDLOG_TRACE("Encode image");
     encoded.clear();
     cv::imencode(".jpg", mat_resize_, encoded, jpg_params_);

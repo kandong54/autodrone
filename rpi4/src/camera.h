@@ -20,17 +20,18 @@ namespace rpi4
     cv::VideoCapture cap_;
 
     int cap_device_;
-    int cap_width_;
-    int cap_height_;
     double cap_fps_;
     cv::Mat mat_cap_;
     cv::Mat mat_resize_;
+    int out_width_;
+    int out_height_;
     int jpg_quality_;
     std::vector<int> jpg_params_;
 
   public:
-    int out_width;
-    int out_height;
+    int cap_width;
+    int cap_height;
+
     std::vector<uchar> encoded;
 
   public:

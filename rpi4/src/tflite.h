@@ -23,18 +23,16 @@ namespace rpi4
     float output_quant_scale_ = 1;
     int32_t output_quant_zero_point_ = 0;
     TfLiteType output_type_ = kTfLiteNoType;
-    int input_height_ = 0;
-    int input_width_ = 0;
     int input_channels_ = 0;
     int output_nums_ = 0;
     int class_nums_ = 0;
-    size_t input_bytes_ = 0;
-    size_t output_bytes_ = 0;
-    float conf_threshold_ = 0.25;
-    float iou_threshold_ = 0.45;
+    // size_t input_bytes_ = 0;
+    // size_t output_bytes_ = 0;
+    float conf_threshold_ = 0;
+    float iou_threshold_ = 0;
     TfLitePtrUnion *input_data_ptr_ = nullptr;
-    int cap_width_;
-    int cap_height_;
+    int camera_width_;
+    int camera_height_;
     cv::Mat mat_convert;
 
   public:
@@ -42,6 +40,8 @@ namespace rpi4
     std::vector<float> confs;
     std::vector<int> class_id;
     std::vector<int> indices;
+    int input_height = 0;
+    int input_width = 0;
 
   private:
     template <class T>

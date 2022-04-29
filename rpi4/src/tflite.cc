@@ -23,8 +23,9 @@ namespace rpi4
     conf_threshold_ = 0.25;
     iou_threshold_ = 0.45;
 
-    cap_width_ = 960;
-    cap_height_ = 720;
+    // TODO: get from camera
+    camera_width_ = 960;
+    camera_height_ = 720;
   }
 
   TFLite::~TFLite()
@@ -75,13 +76,13 @@ namespace rpi4
     input_type_ = input_tensor->type;
     output_type_ = output_tensor->type;
     // Bytes
-    input_bytes_ = input_tensor->bytes;
-    output_bytes_ = output_tensor->bytes;
+    // input_bytes_ = input_tensor->bytes;
+    // output_bytes_ = output_tensor->bytes;
     // dims
     // TODO: send to camera
     TfLiteIntArray *input_dims = input_tensor->dims;
-    input_height_ = input_dims->data[1];
-    input_width_ = input_dims->data[2];
+    input_height = input_dims->data[1];
+    input_width = input_dims->data[2];
     input_channels_ = input_dims->data[3];
     // reserve prediction space
     // [1, 25200, 6]
@@ -128,10 +129,10 @@ namespace rpi4
       // [Cx, Cy, width , height, confidence, class1, class2, ...]
       if (output_tensor_ptr[i + kConfidence] >= quant_threshold)
       {
-        int center_x = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kXCenter]) - output_quant_zero_point_) * output_quant_scale_ * cap_width_);
-        int center_y = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kYCenter]) - output_quant_zero_point_) * output_quant_scale_ * cap_height_);
-        int width = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kWidth]) - output_quant_zero_point_) * output_quant_scale_ * cap_width_);
-        int height = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kHeight]) - output_quant_zero_point_) * output_quant_scale_ * cap_height_);
+        int center_x = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kXCenter]) - output_quant_zero_point_) * output_quant_scale_ * camera_width_);
+        int center_y = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kYCenter]) - output_quant_zero_point_) * output_quant_scale_ * camera_height_);
+        int width = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kWidth]) - output_quant_zero_point_) * output_quant_scale_ * camera_width_);
+        int height = static_cast<int>((static_cast<float>(output_tensor_ptr[i + kHeight]) - output_quant_zero_point_) * output_quant_scale_ * camera_height_);
         int left = center_x - width / 2;
         int top = center_y - height / 2;
         int id = std::distance(output_tensor_ptr + i + kClass, std::max_element(output_tensor_ptr + i + kClass, output_tensor_ptr + i + kClass + class_nums_));

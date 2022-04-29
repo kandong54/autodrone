@@ -7,6 +7,7 @@ service Drone {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
   rpc GetCamera (Empty) returns (stream CameraReply) {}
+  rpc GetImageSize (Empty) returns (ImageSize) {}
 }
 
 // The request message containing the user's name.
@@ -30,6 +31,13 @@ message CameraReply {
   }
   bytes image = 1;
   repeated BoundingBox box = 2;
+}
+
+message ImageSize {
+  int32 image_width = 1;
+  int32 image_height = 2;
+  int32 camera_width = 3;
+  int32 camera_height = 4;
 }
 
 // import "google/protobuf/empty.proto";

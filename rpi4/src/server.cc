@@ -144,6 +144,7 @@ namespace rpi4
     reply->set_message(prefix + request->name());
     return Status::OK;
   }
+
   Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] const Empty *request, ServerWriter<CameraReply> *writer)
   {
     SPDLOG_INFO("GetCamera");
@@ -181,6 +182,16 @@ namespace rpi4
       // TODO: better sulotion?
       drone_app_->cv_flag = false;
     }
+    return Status::OK;
+  }
+
+  Status DroneServiceImpl::GetImageSize([[maybe_unused]] ServerContext *context, [[maybe_unused]] const Empty *request, ImageSize *reply)
+  {
+    SPDLOG_INFO("GetImageSize");
+    reply->set_image_width(drone_app_->tflite->input_width);
+    reply->set_image_height(drone_app_->tflite->input_height);
+    reply->set_camera_width(drone_app_->camera->cap_width);
+    reply->set_camera_height(drone_app_->camera->cap_height);
     return Status::OK;
   }
 } // AUTODRONE_RPI4_SERVER

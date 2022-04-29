@@ -11,6 +11,7 @@ using autodrone::Drone;
 using autodrone::Empty;
 using autodrone::HelloReply;
 using autodrone::HelloRequest;
+using autodrone::ImageSize;
 using grpc::AuthMetadataProcessor;
 using grpc::Server;
 using grpc::ServerContext;
@@ -38,6 +39,7 @@ namespace rpi4
     ~DroneServiceImpl();
     Status SayHello(ServerContext *context, const HelloRequest *request, HelloReply *reply) override;
     Status GetCamera(ServerContext *context, const Empty *request, ServerWriter<CameraReply> *writer) override;
+    Status GetImageSize(ServerContext *context, const Empty *request, ImageSize *reply) override;
     void Run();
     void Wait();
   };
