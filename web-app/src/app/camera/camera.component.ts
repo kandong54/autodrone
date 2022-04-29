@@ -69,7 +69,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
       if (this.context2D === null) {
         return;
       }
-      this.context2D.drawImage(image, 0, 0, this.imageWidth, this.imageHeight, 0, 0, this.cameraWidth, this.cameraHeight);
+      this.context2D.drawImage(image, 0, 0, this.imageWidth, this.imageHeight, 0, 0, this.context2D.canvas.width, this.context2D.canvas.height);
       this.context2D.fillText('FPS: ' + (1000 / this.interval).toFixed(2), 10, 50);
       for (const box of boxes) {
         let x = box.getLeft();
@@ -78,7 +78,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
         let height = box.getHeight();
         this.context2D.strokeRect(x, y, width, height);
         let confidence = box.getConfidence();
-        this.context2D.fillText(Math.round(confidence * 100) + '%', x, y + height);
+        this.context2D.fillText(Math.round(confidence * 100) + '%', x + 5, y + height - 6);
       }
       URL.revokeObjectURL(image.src);
     }
@@ -90,8 +90,16 @@ export class CameraComponent implements OnInit, AfterViewInit {
     // this.myCanvas.nativeElement.style.aspectRatio = this.cameraWidth / this.cameraHeight;
     this.context2D = this.myCanvas.nativeElement.getContext('2d');
     if (this.context2D) {
+      // Stroke
       this.context2D.strokeStyle = 'red';
+      this.context2D.lineWidth = 3;
+      // Font
       this.context2D.font = '48px Roboto';
+      // Shadow
+      this.context2D.shadowColor = "white";
+      this.context2D.shadowBlur = 3;
+      this.context2D.shadowOffsetX = 1;
+      this.context2D.shadowOffsetY = 1;
     }
     this.imageStream = this.clientService.getCamera();
     if (this.imageStream === null) {
