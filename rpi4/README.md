@@ -10,11 +10,12 @@ Hello, World!
 - spdlog
 - OpenSSL
 - FFmpeg
+- yaml-cpp
 
 To install these:
 
 ```shell
-sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev ffmpeg
+sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev ffmpeg libyaml-cpp-dev
 sudo apt install protobuf-compiler-grpc 
 ```
 

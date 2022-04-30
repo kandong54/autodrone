@@ -13,6 +13,7 @@
 #include <spdlog/spdlog.h>
 
 #include "drone_app.h"
+#include "config.h"
 
 using autodrone::CameraReply_BoundingBox;
 using grpc::AuthContext;
@@ -41,7 +42,7 @@ namespace rpi4
     class DroneAuthMetadataProcessor : public AuthMetadataProcessor
     {
     public:
-      DroneAuthMetadataProcessor(const std::string &password, const std::string &salt)
+      std::string Hash(const std::string &password, const std::string &salt)
       {
         std::string to_be_hashed = password + salt;
 
@@ -56,9 +57,18 @@ namespace rpi4
 
         for (unsigned int i = 0; i < md_len; i++)
           hex_stream << std::hex << std::setfill('0') << std::setw(2) << (int)md_value[i];
-
-        token_ = std::string("Bearer ") + hex_stream.str();
+        return hex_stream.str();
       }
+
+      DroneAuthMetadataProcessor(const std::string &password_hashed)
+      {
+        token_ = std::string("Bearer ") + password_hashed;
+      }
+
+      // DroneAuthMetadataProcessor(const std::string &password, const std::string &salt)
+      // {
+      //   token_ = std::string("Bearer ") + Hash(password, salt);
+      // }
 
       // Interface implementation
       bool IsBlocking() const override { return false; }
@@ -90,15 +100,38 @@ namespace rpi4
     };
   } // namespace
 
-  DroneServiceImpl::DroneServiceImpl(DroneApp *drone_app)
+  DroneServiceImpl::DroneServiceImpl(Config *config, DroneApp *drone_app)
   {
+    config_ = config;
     drone_app_ = drone_app;
+    // TODO: remove default value
     server_address_ = "0.0.0.0:9090";
     server_key_path_ = "./certs/key.pem";
     server_cert_path_ = "./certs/cert.pem";
-    password_ = "robobee";
-    password_salt_ = "3NqlrT9*v8^0";
-    processor_ = std::unique_ptr<DroneAuthMetadataProcessor>(new DroneAuthMetadataProcessor(password_, password_salt_));
+    // password_ = "robobee";
+    // password_salt_ = "3NqlrT9*v8^0";
+
+    if (config->node["server"])
+    {
+      if (config->node["server"]["address"])
+      {
+        server_address_ = config->node["server"]["address"].as<std::string>();
+      }
+      if (config->node["server"]["key_path"])
+      {
+        server_key_path_ = config->node["server"]["key_path"].as<std::string>();
+      }
+      if (config->node["server"]["cert_path"])
+      {
+        server_cert_path_ = config->node["server"]["cert_path"].as<std::string>();
+      }
+      if (config->node["server"]["password"])
+      {
+        password_hashed_ = config->node["server"]["password"].as<std::string>();
+      }
+    }
+    // processor_ = std::unique_ptr<DroneAuthMetadataProcessor>(new DroneAuthMetadataProcessor(password_, password_salt_));
+    processor_ = std::unique_ptr<DroneAuthMetadataProcessor>(new DroneAuthMetadataProcessor(password_hashed_));
   }
 
   DroneServiceImpl::~DroneServiceImpl()
@@ -161,19 +194,19 @@ namespace rpi4
       drone_app_->cv.wait(drone_lock, [this]
                           { return drone_app_->cv_flag; });
       SPDLOG_TRACE("set image");
-      reply.set_image(drone_app_->camera->encoded.data(), drone_app_->camera->encoded.size());
+      reply.set_image(drone_app_->camera.encoded.data(), drone_app_->camera.encoded.size());
       // Bounding Box
       SPDLOG_TRACE("add box");
       reply.clear_box();
-      for (int i : drone_app_->tflite->indices)
+      for (int i : drone_app_->tflite.indices)
       {
         CameraReply_BoundingBox *box = reply.add_box();
-        box->set_left(drone_app_->tflite->boxes[i].x);
-        box->set_top(drone_app_->tflite->boxes[i].y);
-        box->set_width(drone_app_->tflite->boxes[i].width);
-        box->set_height(drone_app_->tflite->boxes[i].height);
-        box->set_confidence(drone_app_->tflite->confs[i]);
-        box->set_class_(drone_app_->tflite->class_id[i]);
+        box->set_left(drone_app_->tflite.boxes[i].x);
+        box->set_top(drone_app_->tflite.boxes[i].y);
+        box->set_width(drone_app_->tflite.boxes[i].width);
+        box->set_height(drone_app_->tflite.boxes[i].height);
+        box->set_confidence(drone_app_->tflite.confs[i]);
+        box->set_class_(drone_app_->tflite.class_id[i]);
       }
       SPDLOG_TRACE("send reply");
       writer->Write(reply);
@@ -188,10 +221,10 @@ namespace rpi4
   Status DroneServiceImpl::GetImageSize([[maybe_unused]] ServerContext *context, [[maybe_unused]] const Empty *request, ImageSize *reply)
   {
     SPDLOG_INFO("GetImageSize");
-    reply->set_image_width(drone_app_->tflite->input_width);
-    reply->set_image_height(drone_app_->tflite->input_height);
-    reply->set_camera_width(drone_app_->camera->cap_width);
-    reply->set_camera_height(drone_app_->camera->cap_height);
+    reply->set_image_width(drone_app_->tflite.input_width);
+    reply->set_image_height(drone_app_->tflite.input_height);
+    reply->set_camera_width(drone_app_->camera.cap_width);
+    reply->set_camera_height(drone_app_->camera.cap_height);
     return Status::OK;
   }
 } // AUTODRONE_RPI4_SERVER

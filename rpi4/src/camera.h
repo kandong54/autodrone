@@ -5,28 +5,24 @@
 #include <vector>
 
 #include <opencv2/videoio.hpp>
-extern "C"
-{
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-}
 
 namespace rpi4
 {
+  class Config;
 
   class Camera
   {
   private:
-    cv::VideoCapture cap_;
-
+    Config *config_ = nullptr;
     int cap_device_;
     double cap_fps_;
-    cv::Mat mat_cap_;
-    cv::Mat mat_resize_;
     int out_width_;
     int out_height_;
     int jpg_quality_;
+    cv::VideoCapture cap_;
     std::vector<int> jpg_params_;
+    cv::Mat mat_cap_;
+    cv::Mat mat_resize_;
 
   public:
     int cap_width;
@@ -36,8 +32,10 @@ namespace rpi4
 
   public:
     Camera();
+    void LoadConfig(Config *config);
     int Open();
     int Capture(cv::Mat &mat);
+    void SetOutputSize(int width, int height);
     bool IsOpened();
   };
 

@@ -4,10 +4,8 @@
 
 namespace rpi4
 {
-  DroneApp::DroneApp(/* args */)
+  DroneApp::DroneApp()
   {
-    camera = std::make_unique<Camera>();
-    tflite = std::make_unique<TFLite>();
   }
 
   DroneApp::~DroneApp()
@@ -16,8 +14,8 @@ namespace rpi4
 
   bool DroneApp::IsConnected()
   {
-    bool camera_flag = camera->IsOpened();
-    bool tflite_flag = tflite->IsWork();
+    bool camera_flag = camera.IsOpened();
+    bool tflite_flag = tflite.IsWork();
     return camera_flag && tflite_flag;
   }
 
@@ -29,7 +27,7 @@ namespace rpi4
     while (true)
     {
       SPDLOG_DEBUG("Loop start");
-      ret = camera->Capture(tmp_frame);
+      ret = camera.Capture(tmp_frame);
       if (ret)
       {
         SPDLOG_ERROR("Failed to capture image!");
@@ -37,7 +35,7 @@ namespace rpi4
       }
       // compress image
       cv_flag = false;
-      ret = tflite->Inference(tmp_frame);
+      ret = tflite.Inference(tmp_frame);
       if (ret)
       {
         SPDLOG_ERROR("Failed to inference image!");
@@ -49,31 +47,36 @@ namespace rpi4
     }
   }
 
-  void DroneApp::BuildAndStart()
+  int DroneApp::BuildAndStart(Config *config)
   {
     int ret;
-    ret = tflite->Load();
+    tflite.LoadConfig(config);
+    ret = tflite.Load();
     if (ret)
     {
       SPDLOG_CRITICAL("Failed to Load TFlite!");
-      return;
+      return -1;
     }
-    ret = camera->Open();
+    camera.LoadConfig(config);
+    ret = camera.Open();
     if (ret)
     {
       SPDLOG_CRITICAL("Failed to open camera!");
-      return;
+      return -1;
     }
+    camera.SetOutputSize(tflite.input_width, tflite.input_height);
+    tflite.SetCameraSize(camera.cap_width, camera.cap_height);
     if (!IsConnected())
     {
       SPDLOG_CRITICAL("Failed to init DroneApp!");
-      return;
+      return -1;
     }
-    thread_ = std::make_unique<std::thread>(
+    thread_ = std::thread(
         [this]
         {
           Run();
         });
-    thread_->detach();
+    thread_.detach();
+    return 0;
   }
 } // namespace rpi4
