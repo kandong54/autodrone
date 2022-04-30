@@ -11,13 +11,13 @@ import { ClientReadableStream } from 'grpc-web';
 })
 export class CameraComponent implements OnInit, AfterViewInit {
 
-  cameraWidth: number;
-  cameraHeight: number;
-  imageWidth: number;
-  imageHeight: number;
+  cameraWidth: number = 0;
+  cameraHeight: number = 0;
+  imageWidth: number = 0;
+  imageHeight: number = 0;
   imageStream: ClientReadableStream<CameraReply> | null = null;
   interval: number;
-  lastTime: number;
+  lastTime: number = 0;
   context2D: CanvasRenderingContext2D | null = null;
 
   @ViewChild('myCanvas')
@@ -25,20 +25,13 @@ export class CameraComponent implements OnInit, AfterViewInit {
 
   constructor(private clientService: ClientService,
     private router: Router) {
-    // TODO: get width and height
-    this.cameraWidth = 960;
-    this.cameraHeight = 720;
-    this.imageWidth = 640;
-    this.imageHeight = 640;
+    // estimated interval
     this.interval = 230;
-    this.lastTime = Date.now();
   }
 
   ngOnInit(): void {
     this.clientService.connect()
-      .then(result => {
-        console.log('Connect result:', result);
-      })
+      .then(result => console.log('Connect result:', result))
       .catch((error) => {
         alert('Connection error: ' + error);
         this.router.navigate(['/login']);
@@ -99,13 +92,23 @@ export class CameraComponent implements OnInit, AfterViewInit {
     // canvas.style.height = '50%';
   }
 
-  ngAfterViewInit(): void {
+  async getImageSize(): Promise<void> {
+    let imageSize = await this.clientService.getImageSize();
+    if (imageSize === null) {
+      throw new Error("Failed to get image size!");
+    }
+    [this.imageWidth, this.imageHeight, this.cameraWidth, this.cameraHeight] = imageSize;
     this.myCanvas.nativeElement.width = this.cameraWidth;
     this.myCanvas.nativeElement.height = this.cameraHeight;
-    this.context2D = this.myCanvas.nativeElement.getContext('2d');
     this.resizeCanvas(this.myCanvas.nativeElement, this.cameraWidth / this.cameraHeight);
     window.addEventListener("resize", () =>
       this.resizeCanvas(this.myCanvas.nativeElement, this.cameraWidth / this.cameraHeight));
+  }
+
+  async ngAfterViewInit(): Promise<void> {
+    await this.getImageSize();
+
+    this.context2D = this.myCanvas.nativeElement.getContext('2d');
     if (this.context2D) {
       // Stroke
       this.context2D.strokeStyle = 'red';
@@ -126,5 +129,6 @@ export class CameraComponent implements OnInit, AfterViewInit {
     this.imageStream.on('error', (err) => alert('Connection error: ' + err));
     this.imageStream.on('end', () => alert('Connection ends.'));
     this.imageStream.on('data', (response) => this.handleCamera(response));
+    this.lastTime = Date.now();
   }
 }

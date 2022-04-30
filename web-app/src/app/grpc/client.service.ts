@@ -22,18 +22,6 @@ class ClientService {
 
   constructor() { }
 
-  async sayHello(name: string): Promise<string | null> {
-
-    if (this.client === null) {
-      return null;
-    }
-
-    let request = new HelloRequest();
-    request.setName(name);
-    let reply = await this.client.sayHello(request, null);
-    return reply.getMessage();
-  }
-
   // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest
   async digestMessage(message: string, salt: string = '3NqlrT9*v8^0') {
     const msgUint8 = new TextEncoder().encode(message + salt);                           // encode as (utf-8) Uint8Array
@@ -54,6 +42,14 @@ class ClientService {
     this.server.address = localStorage.getItem('server.address') ?? 'drone.kandong.dev';
     this.server.port = +(localStorage.getItem('server.port') ?? 10000);
     this.server.passwordHashed = localStorage.getItem('server.passwordHashed') ?? '';
+  }
+
+  async sayHello(name: string): Promise<string | null> {
+    if (this.client === null) return null;
+    let request = new HelloRequest();
+    request.setName(name);
+    let reply = await this.client.sayHello(request, null);
+    return reply.getMessage();
   }
 
   async connect(server?: Server): Promise<boolean> {
@@ -88,8 +84,17 @@ class ClientService {
       return null;
     }
     return this.client.getCamera(new Empty());
-
   }
+
+  async getImageSize(): Promise<number[] | null> {
+    if (this.client === null) return null;
+    let reply = await this.client.getImageSize(new Empty(), null);
+    return [reply.getImageWidth(),
+    reply.getImageHeight(),
+    reply.getCameraWidth(),
+    reply.getCameraHeight(),];
+  }
+
 }
 
 
