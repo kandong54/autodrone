@@ -1,0 +1,15 @@
+camera:
+  device: 0
+  width: 960
+  height: 720
+  fps: 7.5
+  jpeg_quality: 80
+detector:
+  model_path: ./model/best-int8.tflite
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+server:
+  address: 0.0.0.0:9090
+  key_path: ./certs/key.pem
+  cert_path: ./certs/cert.pem
+  password: f2b94662c69f9440090c9d79aa12f0f10a98b269257c2f386725936cbaa8c60d
