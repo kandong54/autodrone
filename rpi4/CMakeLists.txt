@@ -49,6 +49,7 @@ target_link_libraries(drone PRIVATE
   OpenSSL::Crypto
   ${GRPCPP_LIBRARIES}
   ${TFLITE_LIBRARIES}
+  ${YAML_CPP_LIBRARIES}
 )
 
 # # CPack

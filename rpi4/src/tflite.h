@@ -10,11 +10,17 @@
 
 namespace rpi4
 {
+  class Config;
+
   // TODO: decouple it to class Detector, interface Model, class TFlite
   class TFLite
   {
   private:
+    Config *config_;
     std::string model_path_;
+    float conf_threshold_ = 0;
+    float iou_threshold_ = 0;
+
     std::unique_ptr<tflite::Interpreter> interpreter_;
     std::unique_ptr<tflite::FlatBufferModel> model_;
     bool is_quantization_ = false;
@@ -27,13 +33,9 @@ namespace rpi4
     int input_channels_ = 0;
     int output_nums_ = 0;
     int class_nums_ = 0;
-    // size_t input_bytes_ = 0;
-    // size_t output_bytes_ = 0;
-    float conf_threshold_ = 0;
-    float iou_threshold_ = 0;
     TfLitePtrUnion *input_data_ptr_ = nullptr;
-    int camera_width_;
-    int camera_height_;
+    int camera_width_ = 0;
+    int camera_height_ = 0;
     cv::Mat mat_convert;
 
   public:
@@ -51,9 +53,11 @@ namespace rpi4
   public:
     TFLite(/* args */);
     ~TFLite();
+    void LoadConfig(Config *config);
     int Load();
     int Inference(cv::Mat image);
     bool IsWork();
+    void SetCameraSize(int width, int height);
   };
 
   // [Cx, Cy, width , height, confidence, class]

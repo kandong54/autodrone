@@ -1,6 +1,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "config.h"
 #include "drone_app.h"
 #include "server.h"
 
@@ -11,14 +12,27 @@ int main(int argc, char *argv[])
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%4o] [%^%l%$] [%12s:%10!():%4#] [%4t] %v");
   SPDLOG_INFO("Hello World");
 
-  // TODO: config
+  // TODO: use libboost-program-options to load filename
+  std::string config_path("config.yaml");
 
+  // Config
+  rpi4::Config config;
+  int ret = config.Load(config_path);
+  if (ret)
+  {
+    SPDLOG_CRITICAL("Failed to Load config!");
+    return -1;
+  }
   // Drone
   rpi4::DroneApp drone;
-  drone.BuildAndStart();
-
+  ret = drone.BuildAndStart(&config);
+  if (ret)
+  {
+    SPDLOG_CRITICAL("Failed to start drone!");
+    return -1;
+  }
   // gRPC server
-  rpi4::DroneServiceImpl server(&drone);
+  rpi4::DroneServiceImpl server(&config, &drone);
   server.Run();
 
   // Wait

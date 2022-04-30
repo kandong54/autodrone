@@ -10,14 +10,16 @@
 
 namespace rpi4
 {
+  class Config;
+
   class DroneApp
   {
   private:
-    std::unique_ptr<std::thread> thread_;
+    std::thread thread_;
 
   public:
-    std::unique_ptr<Camera> camera;
-    std::unique_ptr<TFLite> tflite;
+    Camera camera;
+    TFLite tflite;
     std::condition_variable cv;
     bool cv_flag;
 
@@ -28,7 +30,7 @@ namespace rpi4
     DroneApp(/* args */);
     ~DroneApp();
     bool IsConnected();
-    void BuildAndStart();
+    int BuildAndStart(Config *config);
   };
 
 } // namespace rpi4

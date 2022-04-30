@@ -9,6 +9,7 @@
 // #include "tensorflow/lite/optional_debug_tools.h"
 #include <spdlog/spdlog.h>
 
+#include "config.h"
 // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/examples/label_image/label_image.cc
 // https://www.tensorflow.org/lite/api_docs/cc/class/tflite/interpreter
 // https://gist.github.com/WesleyCh3n/ce652db395668ec64fe0ca6fa0e55d0d
@@ -18,20 +19,38 @@ namespace rpi4
 
   TFLite::TFLite(/* args */)
   {
-    // Init parameter
+    // TODO: remove default value
     model_path_ = "./model/best-int8.tflite";
     conf_threshold_ = 0.25;
     iou_threshold_ = 0.45;
-
-    // TODO: get from camera
-    camera_width_ = 960;
-    camera_height_ = 720;
   }
 
   TFLite::~TFLite()
   {
   }
-
+  void TFLite::LoadConfig(Config *config)
+  {
+    if (config->node["detector"])
+    {
+      if (config->node["detector"]["model_path"])
+      {
+        model_path_ = config->node["detector"]["model_path"].as<std::string>();
+      }
+      if (config->node["detector"]["confidence_threshold"])
+      {
+        conf_threshold_ = config->node["detector"]["confidence_threshold"].as<float>();
+      }
+      if (config->node["detector"]["iou_threshold"])
+      {
+        iou_threshold_ = config->node["detector"]["iou_threshold"].as<float>();
+      }
+    }
+  }
+  void TFLite::SetCameraSize(int width, int height)
+  {
+    camera_width_ = width;
+    camera_height_ = height;
+  }
   int TFLite::Load()
   {
     // Create model from file. Note that the model instance must outlive the
@@ -75,9 +94,6 @@ namespace rpi4
     // Type
     input_type_ = input_tensor->type;
     output_type_ = output_tensor->type;
-    // Bytes
-    // input_bytes_ = input_tensor->bytes;
-    // output_bytes_ = output_tensor->bytes;
     // dims
     // TODO: send to camera
     TfLiteIntArray *input_dims = input_tensor->dims;

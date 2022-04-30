@@ -21,21 +21,25 @@ using grpc::Status;
 namespace rpi4
 {
   class DroneApp;
+  class Config;
 
   class DroneServiceImpl final : public Drone::Service
   {
   private:
     std::unique_ptr<Server> server_;
     DroneApp *drone_app_;
+    Config *config_;
     std::string server_address_;
     std::string server_key_path_;
     std::string server_cert_path_;
-    std::string password_;
-    std::string password_salt_;
+    // std::string password_;
+    // std::string password_salt_;
+    std::string password_hashed_;
+
     std::unique_ptr<AuthMetadataProcessor> processor_;
 
   public:
-    DroneServiceImpl(DroneApp *drone_app);
+    DroneServiceImpl(Config *config, DroneApp *drone_app);
     ~DroneServiceImpl();
     Status SayHello(ServerContext *context, const HelloRequest *request, HelloReply *reply) override;
     Status GetCamera(ServerContext *context, const Empty *request, ServerWriter<CameraReply> *writer) override;

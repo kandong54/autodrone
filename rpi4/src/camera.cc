@@ -8,24 +8,54 @@
 #include <opencv2/videoio.hpp>
 #include <spdlog/spdlog.h>
 
+#include "config.h"
+
 namespace rpi4
 {
 
   Camera::Camera()
   {
-    // init parameters
+    // TODO: remove default value
     cap_device_ = 0;
     cap_width = 960;
     cap_height = 720;
     cap_fps_ = 7.5;
-    // TODO: get from TFlite
-    out_width_ = 640;
-    out_height_ = 640;
 
     jpg_quality_ = 80;
     jpg_params_ = {cv::IMWRITE_JPEG_QUALITY, jpg_quality_};
   }
-
+  void Camera::LoadConfig(Config *config)
+  {
+    if (config->node["camera"])
+    {
+      if (config->node["camera"]["device"])
+      {
+        cap_device_ = config->node["camera"]["device"].as<int>();
+      }
+      if (config->node["camera"]["width"])
+      {
+        cap_width = config->node["camera"]["width"].as<int>();
+      }
+      if (config->node["camera"]["height"])
+      {
+        cap_height = config->node["camera"]["height"].as<int>();
+      }
+      if (config->node["camera"]["fps"])
+      {
+        cap_fps_ = config->node["camera"]["fps"].as<double>();
+      }
+      if (config->node["camera"]["jpeg_quality"])
+      {
+        jpg_quality_ = config->node["camera"]["jpeg_quality"].as<int>();
+        jpg_params_[1] = jpg_quality_;
+      }
+    }
+  }
+  void Camera::SetOutputSize(int width, int height)
+  {
+    out_width_ = width;
+    out_height_ = height;
+  }
   int Camera::Open()
   {
     int ret;
