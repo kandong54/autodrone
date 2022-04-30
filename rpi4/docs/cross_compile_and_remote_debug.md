@@ -26,7 +26,7 @@ sudo apt install build-essential g++-aarch64-linux-gnu
 
 ## Install Dependencies
 
-Host:
+### Host:
 
 ```shell
 sudo apt install protobuf-compiler-grpc pkg-config
@@ -48,7 +48,13 @@ sudo rm $LIB_PATH/liblapack.so.3
 sudo ln -s $LIB_PATH/lapack/liblapack.so.3 $LIB_PATH/liblapack.so.3
 ```
 
-Raspberry Pi:
+To fix broken cmake links:
+```shell
+sudo nano /var/lib/schroot/chroots/rpi-bullseye-arm64/usr/lib/aarch64-linux-gnu/cmake/yaml-cpp/yaml-cpp-targets-none.cmake
+```
+Insert "/var/lib/schroot/chroots/rpi-bullseye-arm64" before "/usr"
+
+### Raspberry Pi:
 
 ```shell
 sudo apt install # lib

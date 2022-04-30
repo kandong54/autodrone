@@ -14,6 +14,7 @@ find_package(OpenCV REQUIRED)
 find_package(spdlog REQUIRED)
 # include(FindOpenSSL)
 find_package(OpenSSL REQUIRED)
+find_package(yaml-cpp REQUIRED)
 include(FindPkgConfig)
 # find_package(gRPC CONFIG REQUIRED)
 pkg_search_module(GRPCPP REQUIRED grpc++)
@@ -28,6 +29,7 @@ add_executable(drone
   src/camera.cc
   src/server.cc
   src/tflite.cc
+  src/config.cc
 )
 
 # spdlog

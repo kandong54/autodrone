@@ -7,10 +7,6 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/videoio.hpp>
 #include <spdlog/spdlog.h>
-extern "C"
-{
-#include <libavutil/opt.h>
-}
 
 namespace rpi4
 {
@@ -77,6 +73,7 @@ namespace rpi4
     // TODO: add crop method.
     // cv::Rect crop((cap_width_ - out_width_) / 2, (cap_height_ - out_height_) / 2, (cap_width_ + out_width_) / 2, (cap_height_ + out_height_) / 2);
     // cv::Mat frame = frame(crop);
+    // TODO: add interpolation option
     cv::resize(mat_cap_, mat_resize_, cv::Size(out_width_, out_height_), 0, 0, cv::INTER_NEAREST);
     SPDLOG_TRACE("Encode image");
     encoded.clear();

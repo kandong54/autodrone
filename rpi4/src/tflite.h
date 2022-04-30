@@ -10,6 +10,7 @@
 
 namespace rpi4
 {
+  // TODO: decouple it to class Detector, interface Model, class TFlite
   class TFLite
   {
   private:
