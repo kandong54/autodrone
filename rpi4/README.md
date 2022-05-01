@@ -1,6 +1,11 @@
-# Raspberry Pi 4 Model B
+# Drone App
+The drone app is a C++ program on Raspberry Pi 4 Model B.  It is used to control the drone and serve data to the UI.
 
-Hello, World!
+Up to now, it can 
+- load the config
+- capture camera images
+- detect flowers in an image
+- serve data to the UI with auth
 
 ## Dependencies
 
@@ -9,21 +14,23 @@ Hello, World!
 - TFLite
 - spdlog
 - OpenSSL
-- FFmpeg
 - yaml-cpp
 
 To install these:
 
 ```shell
-sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev ffmpeg libyaml-cpp-dev
+sudo apt install libopencv-dev libgrpc++-dev libprotobuf-dev libspdlog-dev libssl-dev libabsl-dev libflatbuffers-dev libyaml-cpp-dev
 sudo apt install protobuf-compiler-grpc 
 ```
 
 To cross complie TFLite, run [build_tflite.sh](tools/build_tflite.sh) on the host computer.
 
+## Build and Debug
+[Cross Compile and Remote Debug](docs/cross_compile_and_remote_debug.md).
+
 ## Server
 
-Due to browser limitations, gRPC-web needs a special proxy to connect to gRPC services; by default, gRPC-web uses [Envoy](https://www.envoyproxy.io/). To run Envoy with the [config](tools/envoy.yaml):
+Due to browser limitations, [gRPC-web](https://github.com/grpc/grpc-web) needs a special proxy to connect to gRPC services; by default, gRPC-web uses [Envoy](https://www.envoyproxy.io/). To run Envoy with the [config](tools/envoy.yaml):
 
 ```shell
 envoy -c envoy.yaml
@@ -37,9 +44,5 @@ RPi <--- WireGuard ---> Server(Envoy) <--- SSL/TLS ---> Users
 
 Envoy will be hosted on the Raspberry Pi if it has a public IP without firewall. The script [extract_envoy.sh](tools/extract_envoy.sh) can extract the prebuilt arm64 Envoy from Docker images. And Envoy >= v1.17 doesn't work on RPi because of TCMalloc: envoyproxy/envoy#15235.
 
-## Reference
-- [Build TensorFlow Lite for ARM boards](https://www.tensorflow.org/lite/guide/build_arm)
-- [PKGBUILD libtensorflow-lite - AUR](https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=libtensorflow-lite)
-- [Install Precompiled TensorFlow Lite 2.8 on Raspberry Pi](https://lindevs.com/install-precompiled-tensorflow-lite-on-raspberry-pi/)
-- [Building binary deb packages: a practical guide](https://www.internalpointers.com/post/build-binary-deb-package-practical-guide)
-- [gRPC for Web Clients](https://github.com/grpc/grpc-web)
+## GPU
+Now the image compression and model inference are run on the CPU. However, GPU can be used for acceleration. The branch [h264](https://github.com/kandong54/autodrone/tree/h264) shows how to use GPU to encode images.

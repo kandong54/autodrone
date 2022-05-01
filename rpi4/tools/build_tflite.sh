@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Reference
+# https://www.tensorflow.org/lite/guide/build_arm
+# https://aur.archlinux.org/cgit/aur.git/tree/PKGBUILD?h=libtensorflow-lite
+# https://lindevs.com/install-precompiled-tensorflow-lite-on-raspberry-pi/
+# https://www.internalpointers.com/post/build-binary-deb-package-practical-guide
+
 VERSION="2.8.0"
 SRC_PATH="tensorflow_src"
 DEB_NAME="libtensorflowlite-dev_$VERSION-1_arm64"
