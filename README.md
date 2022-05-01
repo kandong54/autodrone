@@ -2,7 +2,7 @@
 Hello, World!
 
 ## Model
-[README](rpi4/) 
+[README](model/) 
 
 ## Drone
 [README](rpi4/) 
