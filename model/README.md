@@ -24,6 +24,6 @@ The model was then exported to tflite format with [quantization](https://www.ten
 | Dynamic      | 0.36  | 0.44      |
 | Int8         | 0.345 | 0.24      |
 
-To evaluate mAPs, tflite_runtime for x86_64 was built on the lab computer. Speeds were measured on a Raspberry Pi 4 Model B 4GB with offical tflite_runtime in 64-bit Pi OS.
+To evaluate mAPs, tflite_runtime for x86_64 was built on the lab computer. Speeds were measured on a Raspberry Pi 4 Model B 4GB with official tflite_runtime in 64-bit Pi OS.
 
 The traning results and exported models can be found in Google Drive AutoDrone/Models/YOLOv5n 0.361/ .

@@ -2,6 +2,13 @@
 
 This is a web-based UI to control the drone: [demo](https://kandong.dev/drone/).
 
+Up to now, it has
+- top bar 
+- login page
+- camera page
+- not-found page
+- gprc service
+
 ## Framework & Module
 
 - [Angular](https://angular.io/)
