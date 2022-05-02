@@ -3,7 +3,7 @@
 This is a web-based UI to control the drone: [demo](https://kandong.dev/drone/).
 
 Up to now, it has
-- top bar 
+- top bar component
 - login page
 - camera page
 - not-found page
