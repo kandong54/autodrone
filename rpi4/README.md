@@ -26,7 +26,9 @@ sudo apt install protobuf-compiler-grpc
 To cross complie TFLite, run [build_tflite.sh](tools/build_tflite.sh) on the host computer.
 
 ## Build and Debug
-[Cross Compile and Remote Debug](docs/cross_compile_and_remote_debug.md).
+See [Cross Compile and Remote Debug](docs/cross_compile_and_remote_debug.md) for detailed instructions.
+
+[Config](tools/config.yaml) is required to run the app. You may also need to create [certificates](https://grpc.github.io/grpc/cpp/structgrpc_1_1_ssl_server_credentials_options.html) and [model](/model/).
 
 ## Server
 
