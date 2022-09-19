@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package autodrone;
+
+// The greeting service definition.
+service Drone {
+  // Sends a greeting
+  rpc SayHello (HelloRequest) returns (HelloReply) {}
+  rpc GetCamera (Empty) returns (stream CameraReply) {}
+  rpc GetImageSize (Empty) returns (ImageSize) {}
+}
+
+// The request message containing the user's name.
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message HelloReply {
+  string message = 1;
+}
+
+message CameraReply {
+  message BoundingBox {
+    int32 left = 1;
+    int32 top = 2;
+    int32 width = 3;
+    int32 height = 4;
+    float confidence = 5;
+    int32 class = 6;
+  }
+  bytes image = 1;
+  repeated BoundingBox box = 2;
+}
+
+message ImageSize {
+  int32 image_width = 1;
+  int32 image_height = 2;
+  int32 camera_width = 3;
+  int32 camera_height = 4;
+}
+
+// import "google/protobuf/empty.proto";
+message Empty {}

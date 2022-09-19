@@ -5,9 +5,6 @@
     {
       "type": "npm",
       "script": "start",
-      "options": {
-        "cwd": "${workspaceFolder}/web-app"
-      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -25,10 +22,35 @@
     },
     {
       "type": "npm",
-      "script": "test",
-      "options": {
-        "cwd": "${workspaceFolder}/web-app"
+      "script": "proto-windows",
+      "problemMatcher": [],
+      "label": "npm: proto-windows"
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "isBackground": true,
+      "group": {
+        "kind": "build",
+        "isDefault": true
       },
+      "problemMatcher": {
+        "owner": "typescript",
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": {
+            "regexp": "(.*?)"
+          },
+          "endsPattern": {
+            "regexp": "bundle generation complete"
+          }
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "test",
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",

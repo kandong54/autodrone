@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Version
-PB_VERSION="3.20.0"
+PB_VERSION="3.20.2"
 WEB_VERSION="1.3.1"
 
 # Clean
