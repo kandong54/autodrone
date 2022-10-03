@@ -1,0 +1,10 @@
+{
+    "editor.formatOnSave": true,
+    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, ColumnLimit: 0 }",
+    "cmake.debugConfig": {
+        "args": [
+            "./tools/config.yaml"
+        ],
+        "cwd": "${workspaceFolder}"
+    }
+}
