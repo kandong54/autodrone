@@ -22,7 +22,7 @@ Special thanks to [Angular Components Docs Site](https://github.com/angular/mate
 
 Wire Format Mode is grpcwebtext to support server streaming calls.
 
-To install Protocol Buffer Compiler, run [install_protoc.sh](tools/install_protoc.sh).
+To install Protocol Buffer Compiler on Linux, run [install_protoc.sh](tools/install_protoc.sh).
 
 To compile the proto files:
 
