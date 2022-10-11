@@ -1,5 +1,8 @@
+#include <server.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
+
+#include <experimental/filesystem>
 
 int main(int argc, char* argv[]) {
   /*
@@ -15,7 +18,26 @@ int main(int argc, char* argv[]) {
    * config
    */
   std::string config_path = (argc > 1) ? argv[1] : "config.yaml";
+  if (!std::experimental::filesystem::exists(config_path)) {
+    SPDLOG_CRITICAL("Config does not exist: {}", config_path);
+    return -1;
+  }
   YAML::Node config = YAML::LoadFile(config_path);
+
+  /*
+   * camera
+   */
+
+  /*
+   * TensorRT
+   */
+
+  /*
+   * gRPC
+   */
+  jetson::DroneServiceImpl server(config);
+  server.Run();
+  server.Wait();
 
   return 0;
 }

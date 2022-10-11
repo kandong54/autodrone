@@ -6,13 +6,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Dependencies
-include(Dependencies.cmake)
+include(cmake/Dependencies.cmake)
 
 # Protos
-# add_subdirectory(protos)
+include(cmake/Protos.cmake)
 
 add_executable(${CMAKE_PROJECT_NAME} 
   src/main.cc
+  src/server.cc
 )
 
 # spdlog
@@ -20,8 +21,16 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
   SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
+target_include_directories(drone PRIVATE
+  src
+)
+
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   spdlog::spdlog
   yaml-cpp
+  grpc_proto
   grpc++
+  libprotobuf
+  stdc++fs
+  OpenSSL::Crypto
 )
