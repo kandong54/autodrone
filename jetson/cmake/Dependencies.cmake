@@ -37,3 +37,8 @@ else()
 endif()
 
 include(FindOpenSSL)
+
+# jetson
+find_package(jetson-utils)
+# find_package(jetson-inference)
+find_package(CUDA)

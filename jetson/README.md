@@ -15,12 +15,17 @@ Up to now, it can
 - spdlog
 - OpenSSL
 - yaml-cpp
+- jetson-utils
 
-Most of them are imported by FetchContent of CMake. To install others:
+Most of them are imported by FetchContent of CMake.
+
+To install OpenSSL library:
 
 ```shell
 sudo apt install libssl-dev
 ```
+To install jetson-inference and jetson-utils: [jetson-inference](
+https://github.com/dusty-nv/jetson-inference/blob/master/docs/building-repo-2.md)
 
 ## Run
 

@@ -1,13 +1,14 @@
 camera:
-  device: 0
-  width: 960
+  device: v4l2:///dev/video0
+  width: 1280
   height: 720
-  fps: 7.5
+  fps: 30
   jpeg_quality: 80
 detector:
   model_path: ./model/best-int8.tflite
   confidence_threshold: 0.5
   iou_threshold: 0.45
+  size: 640
 server:
   address: 0.0.0.0:9090
   key_path: ../tools/cert/localhost.key

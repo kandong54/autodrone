@@ -1,10 +1,17 @@
 {
-    "editor.formatOnSave": true,
     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, ColumnLimit: 0 }",
     "cmake.debugConfig": {
         "args": [
             "./tools/config.yaml"
         ],
         "cwd": "${workspaceFolder}"
+    },
+    "files.associations": {
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "string": "cpp",
+        "__debug": "cpp",
+        "filesystem": "cpp",
+        "memory_resource": "cpp"
     }
 }

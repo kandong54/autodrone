@@ -13,7 +13,8 @@ include(cmake/Protos.cmake)
 
 add_executable(${CMAKE_PROJECT_NAME} 
   src/main.cc
-  src/server.cc
+  # src/server.cc
+  src/camera.cc
 )
 
 # spdlog
@@ -23,14 +24,20 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 
 target_include_directories(drone PRIVATE
   src
+  ${CUDA_INCLUDE_DIRS}
+)
+
+target_link_directories(drone PRIVATE
+  /usr/lib/aarch64-linux-gnu/tegra
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   spdlog::spdlog
   yaml-cpp
-  grpc_proto
-  grpc++
-  libprotobuf
+  # grpc_proto
+  # grpc++
+  # libprotobuf
+  # OpenSSL::Crypto
   stdc++fs
-  OpenSSL::Crypto
+  jetson-utils
 )

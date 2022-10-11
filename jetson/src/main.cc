@@ -1,4 +1,5 @@
-#include <server.h>
+// #include <server.h>
+#include <camera.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
 
@@ -27,6 +28,7 @@ int main(int argc, char* argv[]) {
   /*
    * camera
    */
+  jetson::Camera camera(config);
 
   /*
    * TensorRT
@@ -35,9 +37,16 @@ int main(int argc, char* argv[]) {
   /*
    * gRPC
    */
-  jetson::DroneServiceImpl server(config);
-  server.Run();
-  server.Wait();
+  // jetson::DroneServiceImpl server(config);
+  // server.Run();
+  // server.Wait();
+  return 0;
+  
+  while (true) {
+    SPDLOG_TRACE("*** Strat ***");
+    // camera.Capture();
+    SPDLOG_TRACE("*** End ***");
+  }
 
   return 0;
 }
