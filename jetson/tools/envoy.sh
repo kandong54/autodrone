@@ -39,7 +39,8 @@ sed -i 's/Architecture: amd64/Architecture: arm64/' $DEB_NAME/DEBIAN/control
 mv envoy $DEB_NAME/usr/bin
 # repack deb
 dpkg-deb --build --root-owner-group $DEB_NAME
-mv $DEB_NAME.deb ../
+# install
+apt install ./$DEB_NAME.deb -y
 popd
 rm -rf $TMP
 

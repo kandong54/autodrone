@@ -6,15 +6,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Dependencies
-include(cmake/Dependencies.cmake)
+find_package(spdlog REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # Protos
-include(cmake/Protos.cmake)
+add_subdirectory(protos)
 
 add_executable(${CMAKE_PROJECT_NAME} 
   src/main.cc
-  # src/server.cc
-  src/camera.cc
+  src/server.cc
+  # src/camera.cc
 )
 
 # spdlog
@@ -34,10 +36,7 @@ target_link_directories(drone PRIVATE
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   spdlog::spdlog
   yaml-cpp
-  # grpc_proto
-  # grpc++
-  # libprotobuf
-  # OpenSSL::Crypto
+  grpc_proto
+  OpenSSL::Crypto
   stdc++fs
-  jetson-utils
 )
