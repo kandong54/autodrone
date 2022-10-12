@@ -22,12 +22,6 @@
     },
     {
       "type": "npm",
-      "script": "proto-windows",
-      "problemMatcher": [],
-      "label": "npm: proto-windows"
-    },
-    {
-      "type": "npm",
       "script": "build",
       "isBackground": true,
       "group": {

@@ -11,34 +11,26 @@ import { ClientService, Server } from '../grpc/client.service';
 })
 export class LoginComponent implements OnInit {
 
-  server: Server = {
-    protocol: '',
-    address: '',
-    port: 0,
-    password: '',
-    passwordHashed: ''
-  };
   submitted = false;
 
-  constructor(private clientService: ClientService,
+  constructor(public clientService: ClientService,
     private router: Router) {
   }
 
   ngOnInit(): void {
     this.clientService.load()
-    this.server = this.clientService.server;
     this.clientService.connect()
       .then(result => {
         console.log('Connect result:', result);
-        this.router.navigate(['/camera']);
+        // this.router.navigate(['/camera']);
       })
       .catch((error) => console.log(error));
   }
 
   onSubmit(): void {
     this.submitted = true;
-    console.log('Connect:', this.server);
-    this.clientService.connect(this.server)
+    console.log('Connect:', this.clientService.server);
+    this.clientService.connect()
       .then(result => {
         console.log('Connect result:', result);
         this.router.navigate(['/camera']);
@@ -46,5 +38,8 @@ export class LoginComponent implements OnInit {
       .catch((error) => alert(error))
       .finally(() => this.submitted = false);
   }
-
+  onChange(event: Event):void{
+    this.clientService.server.passwordChanged = true;
+    console.log('Password changed.');
+  }
 }

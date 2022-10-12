@@ -15,7 +15,8 @@ class ClientService {
     address: '',
     port: 0,
     password: '',
-    passwordHashed: ''
+    passwordHashed: '',
+    passwordChanged: false
   };
 
   client: DroneClient | null = null;
@@ -52,12 +53,11 @@ class ClientService {
     return reply.getMessage();
   }
 
-  async connect(server?: Server): Promise<boolean> {
-    if (server !== undefined) {
-      this.server = server;
+  async connect(): Promise<boolean> {
+    this.load();
+    if (this.server.passwordChanged) {
       this.server.passwordHashed = await this.digestMessage(this.server.password);
-    } else {
-      this.load();
+      this.server.passwordChanged = false;
     }
     if (this.client !== null) {
       // this.client.close()
@@ -104,6 +104,7 @@ interface Server {
   port: number;
   password: string;
   passwordHashed: string;
+  passwordChanged: boolean;
 }
 
 // https://nicu.dev/posts/typescript-grpc-web-auth-interceptor
