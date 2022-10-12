@@ -5,7 +5,7 @@ Hello, World!
 [README](model/) 
 
 ## Drone
-[README](rpi4/) 
+[README](jetson/) 
 
 ## User Interface
 [README](web-app/) 
