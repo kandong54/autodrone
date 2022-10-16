@@ -40,7 +40,7 @@ class ClientService {
   }
   load() {
     this.server.protocol = localStorage.getItem('server.protocol') ?? 'https://';
-    this.server.address = localStorage.getItem('server.address') ?? 'drone.kandong.dev';
+    this.server.address = localStorage.getItem('server.address') ?? 'jetson-desktop.local';
     this.server.port = +(localStorage.getItem('server.port') ?? 10000);
     this.server.passwordHashed = localStorage.getItem('server.passwordHashed') ?? '';
   }
@@ -89,10 +89,7 @@ class ClientService {
   async getImageSize(): Promise<number[] | null> {
     if (this.client === null) return null;
     let reply = await this.client.getImageSize(new Empty(), null);
-    return [reply.getImageWidth(),
-    reply.getImageHeight(),
-    reply.getCameraWidth(),
-    reply.getCameraHeight(),];
+    return [reply.getWidth(), reply.getHeight(),];
   }
 
 }

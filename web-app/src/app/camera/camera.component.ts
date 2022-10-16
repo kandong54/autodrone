@@ -11,8 +11,6 @@ import { ClientReadableStream } from 'grpc-web';
 })
 export class CameraComponent implements OnInit, AfterViewInit {
 
-  cameraWidth: number = 0;
-  cameraHeight: number = 0;
   imageWidth: number = 0;
   imageHeight: number = 0;
   imageStream: ClientReadableStream<CameraReply> | null = null;
@@ -43,7 +41,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
     let thisTime = Date.now();
     let delta = thisTime - this.lastTime;
     this.lastTime = thisTime;
-    let k = 0.9;
+    let k = 0.95;
     this.interval = this.interval * k + delta * (1 - k);
   }
 
@@ -97,12 +95,12 @@ export class CameraComponent implements OnInit, AfterViewInit {
     if (imageSize === null) {
       throw new Error("Failed to get image size!");
     }
-    [this.imageWidth, this.imageHeight, this.cameraWidth, this.cameraHeight] = imageSize;
-    this.myCanvas.nativeElement.width = this.cameraWidth;
-    this.myCanvas.nativeElement.height = this.cameraHeight;
-    this.resizeCanvas(this.myCanvas.nativeElement, this.cameraWidth / this.cameraHeight);
+    [this.imageWidth, this.imageHeight] = imageSize;
+    this.myCanvas.nativeElement.width = this.imageWidth;
+    this.myCanvas.nativeElement.height = this.imageHeight;
+    // this.resizeCanvas(this.myCanvas.nativeElement, this.imageWidth / this.imageHeight);
     window.addEventListener("resize", () =>
-      this.resizeCanvas(this.myCanvas.nativeElement, this.cameraWidth / this.cameraHeight));
+      this.resizeCanvas(this.myCanvas.nativeElement, this.imageWidth / this.imageHeight));
   }
 
   async ngAfterViewInit(): Promise<void> {
