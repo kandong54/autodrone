@@ -34,10 +34,8 @@ message CameraReply {
 }
 
 message ImageSize {
-  int32 image_width = 1;
-  int32 image_height = 2;
-  int32 camera_width = 3;
-  int32 camera_height = 4;
+  int32 width = 1;
+  int32 height = 2;
 }
 
 // import "google/protobuf/empty.proto";

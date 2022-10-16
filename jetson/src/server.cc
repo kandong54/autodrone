@@ -8,15 +8,14 @@
 #include <mutex>
 #include <string>
 
+#include "camera.h"
+
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 // #include <grpcpp/health_check_service_interface.h>
 #include <openssl/evp.h>
 #include <spdlog/spdlog.h>
 
 using autodrone::CameraReply_BoundingBox;
-using grpc::AuthContext;
-using grpc::ServerBuilder;
-using grpc::StatusCode;
 
 namespace jetson {
 namespace {
@@ -61,7 +60,7 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
   bool IsBlocking() const override { return false; }
 
   Status Process(const InputMetadata &auth_metadata,
-                 [[maybe_unused]] AuthContext *context,
+                 [[maybe_unused]] grpc::AuthContext *context,
                  OutputMetadata *consumed_auth_metadata,
                  [[maybe_unused]] OutputMetadata *response_metadata) override {
     auto auth_md = auth_metadata.find("authorization");
@@ -74,7 +73,7 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
           std::string(auth_md->second.data(), auth_md->second.length())));
       return Status::OK;
     } else {
-      return Status(StatusCode::UNAUTHENTICATED, std::string("Invalid password!"));
+      return Status(grpc::StatusCode::UNAUTHENTICATED, std::string("Invalid password!"));
     }
   }
 
@@ -83,34 +82,17 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
 };
 }  // namespace
 
-DroneServiceImpl::DroneServiceImpl(YAML::Node &config) : config_(config) {
-  // TODO: remove default value
-  server_address_ = "0.0.0.0:9090";
-  server_key_path_ = "../tools/cert/localhost.key";
-  server_cert_path_ = "../tools/localhost.crt";
-  // password_ = "robobee";
-  // password_salt_ = "3NqlrT9*v8^0";
+DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, std::mutex &cv_m, std::condition_variable &cv) : config_(config), camera_(camera), cv_m_(cv_m), cv_(cv) {
+  std::string server_key_path = config_["server"]["key_path"].as<std::string>();
+  std::string server_cert_path = config_["server"]["cert_path"].as<std::string>();
+  if (!std::experimental::filesystem::exists(server_key_path)) {
+    SPDLOG_CRITICAL("Server key does not exist: {}", server_key_path);
+  }
+  if (!std::experimental::filesystem::exists(server_cert_path)) {
+    SPDLOG_CRITICAL("Server cert does not exist: {}", server_cert_path);
+  }
 
-  if (config["server"]) {
-    if (config["server"]["address"]) {
-      server_address_ = config["server"]["address"].as<std::string>();
-    }
-    if (config["server"]["key_path"]) {
-      server_key_path_ = config["server"]["key_path"].as<std::string>();
-    }
-    if (config["server"]["cert_path"]) {
-      server_cert_path_ = config["server"]["cert_path"].as<std::string>();
-    }
-    if (config["server"]["password"]) {
-      password_hashed_ = config["server"]["password"].as<std::string>();
-    }
-  }
-  if (!std::experimental::filesystem::exists(server_key_path_)) {
-    SPDLOG_CRITICAL("Server key does not exist: {}", server_key_path_);
-  }
-  if (!std::experimental::filesystem::exists(server_cert_path_)) {
-    SPDLOG_CRITICAL("Server cert does not exist: {}", server_cert_path_);
-  }
+  password_hashed_ = config_["server"]["password"].as<std::string>();
   processor_ = std::unique_ptr<DroneAuthMetadataProcessor>(new DroneAuthMetadataProcessor(password_hashed_));
 }
 
@@ -120,25 +102,25 @@ DroneServiceImpl::~DroneServiceImpl() {
 void DroneServiceImpl::Run() {
   // grpc::EnableDefaultHealthCheckService(true);
   // grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-  ServerBuilder builder;
+  grpc::ServerBuilder builder;
   // Authentication
   grpc::SslServerCredentialsOptions ssl_opts;
   ssl_opts.pem_root_certs = "";
-  std::string server_key = ReadFile(server_key_path_);
-  std::string server_cert = ReadFile(server_cert_path_);
+  std::string server_key = ReadFile(config_["server"]["key_path"].as<std::string>());
+  std::string server_cert = ReadFile(config_["server"]["cert_path"].as<std::string>());
   grpc::SslServerCredentialsOptions::PemKeyCertPair pkcp = {server_key, server_cert};
   ssl_opts.pem_key_cert_pairs.push_back(pkcp);
   auto server_creds = grpc::SslServerCredentials(ssl_opts);
   // AuthMetadataProcessor
   server_creds->SetAuthMetadataProcessor(std::move(processor_));
   // Listen on the given address with given authentication mechanism.
-  builder.AddListeningPort(server_address_, server_creds);
+  builder.AddListeningPort(config_["server"]["address"].as<std::string>(), server_creds);
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(this);
   // Finally assemble the server.
   server_ = builder.BuildAndStart();
-  SPDLOG_WARN("Server listening on {}", server_address_);
+  SPDLOG_WARN("Server listening on {}", config_["server"]["address"].as<std::string>());
 }
 
 void DroneServiceImpl::Wait() {
@@ -156,46 +138,39 @@ Status DroneServiceImpl::SayHello([[maybe_unused]] ServerContext *context, const
 
 Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] const Empty *request, ServerWriter<CameraReply> *writer) {
   SPDLOG_INFO("GetCamera");
-  // TODO: remove mutex
-  //   std::mutex mutex;
-  //   std::unique_lock drone_lock(mutex);
-  //   CameraReply reply;
-  //   // TODO: drone_app_->tflite
-  //   // size_t image_bytes = drone_app_->frame.total() * drone_app_->frame.elemSize();
-  //   while (!context->IsCancelled()) {
-  //     SPDLOG_DEBUG("Loop start");
-  //     // Read Image
-  //     drone_app_->cv.wait(drone_lock, [this] { return drone_app_->cv_flag; });
-  //     SPDLOG_TRACE("set image");
-  //     reply.set_image(drone_app_->camera.encoded.data(), drone_app_->camera.encoded.size());
-  //     // Bounding Box
-  //     SPDLOG_TRACE("add box");
-  //     reply.clear_box();
-  //     for (int i : drone_app_->tflite.indices) {
-  //       CameraReply_BoundingBox *box = reply.add_box();
-  //       box->set_left(drone_app_->tflite.boxes[i].x);
-  //       box->set_top(drone_app_->tflite.boxes[i].y);
-  //       box->set_width(drone_app_->tflite.boxes[i].width);
-  //       box->set_height(drone_app_->tflite.boxes[i].height);
-  //       box->set_confidence(drone_app_->tflite.confs[i]);
-  //       box->set_class_(drone_app_->tflite.class_id[i]);
-  //     }
-  //     SPDLOG_TRACE("send reply");
-  //     writer->Write(reply);
-  //     SPDLOG_TRACE("Loop end");
-  //     // Avoid fake wake
-  //     // TODO: better sulotion?
-  //     drone_app_->cv_flag = false;
-  //   }
+  CameraReply reply;
+  while (!context->IsCancelled()) {
+    // Read Image
+    SPDLOG_TRACE("condition_variable");
+    std::unique_lock lk(cv_m_);
+    cv_.wait(lk, [this] { return ready; });
+    SPDLOG_DEBUG("Strat");
+    SPDLOG_TRACE("set image");
+    reply.set_image(camera_.mjpeg_buffer[mjpeg_index].start, mjpeg_size);
+    // Bounding Box
+    SPDLOG_TRACE("add box");
+    reply.clear_box();
+    // for (int i : drone_app_->tflite.indices) {
+    //   CameraReply_BoundingBox *box = reply.add_box();
+    //   box->set_left(drone_app_->tflite.boxes[i].x);
+    //   box->set_top(drone_app_->tflite.boxes[i].y);
+    //   box->set_width(drone_app_->tflite.boxes[i].width);
+    //   box->set_height(drone_app_->tflite.boxes[i].height);
+    //   box->set_confidence(drone_app_->tflite.confs[i]);
+    //   box->set_class_(drone_app_->tflite.class_id[i]);
+    // }
+    SPDLOG_TRACE("send reply");
+    writer->Write(reply);
+    SPDLOG_TRACE("Loop end");
+    ready = false;
+  }
   return Status::OK;
 }
 
 Status DroneServiceImpl::GetImageSize([[maybe_unused]] ServerContext *context, [[maybe_unused]] const Empty *request, ImageSize *reply) {
   SPDLOG_INFO("GetImageSize");
-  //   reply->set_image_width(drone_app_->tflite.input_width);
-  //   reply->set_image_height(drone_app_->tflite.input_height);
-  //   reply->set_camera_width(drone_app_->camera.cap_width);
-  //   reply->set_camera_height(drone_app_->camera.cap_height);
+  reply->set_width(config_["camera"]["width"].as<unsigned int>());
+  reply->set_height(config_["camera"]["height"].as<unsigned int>());
   return Status::OK;
 }
 }  // namespace jetson

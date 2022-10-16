@@ -1,9 +1,7 @@
 camera:
-  device: v4l2:///dev/video0
+  device: /dev/video0
   width: 1280
   height: 720
-  fps: 30
-  jpeg_quality: 80
 detector:
   model_path: ./model/best-int8.tflite
   confidence_threshold: 0.5
