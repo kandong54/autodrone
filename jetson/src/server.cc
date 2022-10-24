@@ -9,7 +9,7 @@
 #include <string>
 
 #include "camera.h"
-
+#undef Status
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 // #include <grpcpp/health_check_service_interface.h>
 #include <openssl/evp.h>

@@ -1,7 +1,9 @@
 #include <camera.h>
 #include <server.h>
+#include <model.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
+#include <cuda_runtime.h>
 
 #include <condition_variable>
 #include <experimental/filesystem>
@@ -28,13 +30,21 @@ int main(int argc, char* argv[]) {
   YAML::Node config = YAML::LoadFile(config_path);
 
   /*
+   * GPU
+   */
+  cudaDeviceReset();
+  
+  /*
+   * TensorRT
+   */
+  jetson::Model model(config);
+  model.Init();
+
+  /*
    * camera
    */
   jetson::Camera camera(config);
   camera.Open();
-  /*
-   * TensorRT
-   */
 
   /*
    * Concurrency

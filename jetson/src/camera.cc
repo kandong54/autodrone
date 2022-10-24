@@ -1,11 +1,12 @@
 #include "camera.h"
-// /usr/src/jetson_multimedia_api/samples/v4l2cuda/capture.cpp
-// /usr/src/jetson_multimedia_api/samples/12_camera_v4l2_cuda/camera_v4l2_cuda.cpp
+// Ref: /usr/src/jetson_multimedia_api/samples/
 
 #include <asm/types.h> /* for videodev2.h */
-#include <cuda_runtime.h>
 #include <fcntl.h>
-#include <jetson-utils/nvbuf_utils.h>
+#include <jetson-utils/cudaColorspace.h>
+#include <jetson-utils/cudaMappedMemory.h>
+#include <jetson-utils/cudaNormalize.h>
+#include <jetson-utils/cudaResize.h>
 #include <linux/videodev2.h>
 #include <poll.h>
 #include <spdlog/spdlog.h>
@@ -13,18 +14,25 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include "cudaEGL.h"
+
 namespace jetson {
 
 Camera::Camera(YAML::Node& config) : config_(config) {
+  model_size_ = config_["detector"]["size"].as<unsigned int>();
 }
 
 int Camera::Open() {
   // open_device
+  // camera
   std::string dev_name = config_["camera"]["device"].as<std::string>();
   cam_fd_ = open(dev_name.c_str(), O_RDWR /* required */ | O_NONBLOCK, 0);
   if (-1 == cam_fd_)
     SPDLOG_CRITICAL("Failed to open {}", dev_name);
-
+  // NvJPEGDecoder
+  jpegdec_ = NvJPEGDecoder::createJPEGDecoder("jpegdec");
+  if (!jpegdec_)
+    SPDLOG_CRITICAL("Failed to create NvJPEGDecoder");
   // init_device
   struct v4l2_capability cap;
   ioctl(cam_fd_, VIDIOC_QUERYCAP, &cap);
@@ -68,6 +76,19 @@ int Camera::Open() {
                              (void**)&mjpeg_buffer[i].start))
       SPDLOG_CRITICAL("NvBufferMemMap");
   }
+  /* Create egl_display that will be used in mapping DMABUF to CUDA buffer */
+  egl_display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  if (egl_display_ == EGL_NO_DISPLAY)
+    SPDLOG_CRITICAL("Error while get EGL display connection");
+  if (!eglInitialize(egl_display_, NULL, NULL))
+    SPDLOG_CRITICAL("Erro while initialize EGL display connection");
+  if (!cudaAllocMapped((void**)&rgb_image_, config_["camera"]["width"].as<unsigned int>(),
+                       config_["camera"]["height"].as<unsigned int>(), IMAGE_RGB32F))
+    SPDLOG_CRITICAL("cudaAllocMapped");
+  if (!cudaAllocMapped((void**)&resize_image_, model_size_, model_size_, IMAGE_RGB32F))
+    SPDLOG_CRITICAL("cudaAllocMapped");
+  if (!cudaAllocMapped((void**)&model_image_, model_size_, model_size_, IMAGE_RGB32F))
+    SPDLOG_CRITICAL("cudaAllocMapped");
   // start_capturing
   struct v4l2_buffer buf;
   memset(&buf, 0, sizeof(buf));
@@ -86,7 +107,6 @@ int Camera::Open() {
     SPDLOG_CRITICAL("VIDIOC_STREAMON");
   // warm up
   Capture();
-  Transfer();
   return 0;
 }
 
@@ -111,8 +131,8 @@ int Camera::Capture() {
     SPDLOG_CRITICAL("VIDIOC_DQBUF");
   SPDLOG_TRACE("NvBufferMemSyncForDevice");
   /* Cache sync for VIC operation since the data is from CPU */
-  NvBufferMemSyncForDevice(mjpeg_buffer[mjpeg_index].dmabuff_fd, 0,
-                           (void**)&mjpeg_buffer[mjpeg_index].start);
+  // NvBufferMemSyncForDevice(mjpeg_buffer[mjpeg_index].dmabuff_fd, 0,
+  //                          (void**)&mjpeg_buffer[mjpeg_index].start);
   SPDLOG_TRACE("bytesused");
   /* v4l2_buf.bytesused may have padding bytes for alignment
      Search for EOF to get exact size */
@@ -132,30 +152,75 @@ int Camera::Capture() {
   v4l2_buf.m.fd = (unsigned long)mjpeg_buffer[mjpeg_index].dmabuff_fd;
   if (-1 == ioctl(cam_fd_, VIDIOC_QBUF, &v4l2_buf))
     SPDLOG_CRITICAL("VIDIOC_QBUF");
+  SPDLOG_TRACE("Convert");
+  Convert();
   SPDLOG_TRACE("End");
   return 0;
 }
 
-int Camera::Transfer() {
+int Camera::Convert() {
   SPDLOG_TRACE("Strat");
-  // FILE* fp = fopen("file_name.jpg", "wb");
-  // fwrite(mjpeg_buffer[0].start, 1, mjpeg_size, fp);
-  // fclose(fp);
+
+  SPDLOG_TRACE("decodeToFd");
+  int fd = 0;
+  uint32_t width, height, pixfmt;
+  int ret = jpegdec_->decodeToFd(fd, mjpeg_buffer[(mjpeg_index + mjpeg_num - 1) % mjpeg_num].start, mjpeg_size, pixfmt, width, height);
+  if (ret < 0)
+    SPDLOG_CRITICAL("decodeToFd");
+  if (pixfmt != V4L2_PIX_FMT_YUV420M)
+    SPDLOG_WARN("pixfmt != V4L2_PIX_FMT_YUV420M");
+
+  SPDLOG_TRACE("Read Fd");
+  EGLImageKHR egl_image = NvEGLImageFromFd(egl_display_, fd);
+  if (egl_image == NULL)
+    SPDLOG_CRITICAL("NvEGLImageFromFd");
+  CUresult status;
+  CUeglFrame eglFrame;
+  CUgraphicsResource pResource = NULL;
+  cudaFree(0);
+  status = cuGraphicsEGLRegisterImage(&pResource, egl_image,
+                                      CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE);
+  if (status != CUDA_SUCCESS)
+    SPDLOG_CRITICAL("cuGraphicsEGLRegisterImage");
+  status = cuGraphicsResourceGetMappedEglFrame(&eglFrame, pResource, 0, 0);
+  if (status != CUDA_SUCCESS)
+    SPDLOG_CRITICAL("cuGraphicsResourceGetMappedEglFrame");
+  status = cuCtxSynchronize();
+  if (status != CUDA_SUCCESS)
+    SPDLOG_CRITICAL("cuCtxSynchronize");
+  if (eglFrame.frameType != CU_EGL_FRAME_TYPE_PITCH)
+    SPDLOG_CRITICAL("CU_EGL_FRAME_TYPE_PITCH");
+
+  SPDLOG_TRACE("YUV420 to RGB");
+  if (cudaConvertColor(eglFrame.frame.pArray[0], IMAGE_I420,
+                       rgb_image_, IMAGE_RGB32F,
+                       width, height))
+    SPDLOG_CRITICAL("cudaConvertColor");
+
+  SPDLOG_TRACE("Resize");
+  if (cudaResize(rgb_image_, width, height,
+                 resize_image_, model_size_, model_size_))
+    SPDLOG_CRITICAL("cudaConvertColor");
+
+  SPDLOG_TRACE("Normalize");
+  if (cudaNormalize(resize_image_, make_float2(0, 255),
+                    model_image_, make_float2(0, 1),
+                    model_size_, model_size_))
+    SPDLOG_CRITICAL("cudaNormalize");
+
+  SPDLOG_TRACE("Synchronize");
+  cudaDeviceSynchronize();
+  // SPDLOG_TRACE("cuCtxSynchronize");
+  // status = cuCtxSynchronize();
+  // if (status != CUDA_SUCCESS)
+  //   SPDLOG_CRITICAL("cuCtxSynchronize");
+  SPDLOG_TRACE("cleanup");
+  status = cuGraphicsUnregisterResource(pResource);
+  if (status != CUDA_SUCCESS)
+    SPDLOG_CRITICAL("cuGraphicsUnregisterResource");
+  NvDestroyEGLImage(egl_display_, egl_image);
   SPDLOG_TRACE("End");
-
-  // /* Decoding MJPEG frame */
-  // if (ctx->jpegdec->decodeToFd(fd, ctx->g_buff[v4l2_buf.index].start,
-  //                              bytesused, pixfmt, width, height) < 0)
-  //   ERROR_RETURN("Cannot decode MJPEG");
-
-  // /* Convert the decoded buffer to YUV420P */
-  // if (-1 == NvBufferTransform(fd, ctx->render_dmabuf_fd,
-  //                             &transParams))
-  //   ERROR_RETURN("Failed to convert the buffer");
   return 0;
-}
-
-bool Camera::IsOpened() {
 }
 
 Camera::~Camera() {
@@ -170,6 +235,13 @@ Camera::~Camera() {
   // close_device
   if (-1 == close(cam_fd_))
     SPDLOG_CRITICAL("close");
+  if (!eglTerminate(egl_display_))
+    SPDLOG_CRITICAL("eglTerminate");
+  // free memory
+  cudaFreeHost(rgb_image_);
+  cudaFreeHost(resize_image_);
+  cudaFreeHost(model_image_);
+  delete jpegdec_;
 }
 
 }  // namespace jetson

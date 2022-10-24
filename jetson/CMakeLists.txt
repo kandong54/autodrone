@@ -11,6 +11,8 @@ find_package(yaml-cpp REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(jetson-utils REQUIRED)
 find_package(CUDA REQUIRED)
+find_package(OpenGL REQUIRED COMPONENTS OpenGL EGL)
+include(cmake/nvmpi.cmake)
 
 # Protos
 add_subdirectory(protos)
@@ -19,6 +21,7 @@ add_executable(${CMAKE_PROJECT_NAME}
   src/main.cc
   src/server.cc
   src/camera.cc
+  src/model.cc
 )
 
 # spdlog
@@ -42,4 +45,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   OpenSSL::Crypto
   stdc++fs
   jetson-utils
+  nvmpi
+  OpenGL::OpenGL
+  OpenGL::EGL
+  ${CUDA_CUDA_LIBRARY}
+  ${CUDA_CUDART_LIBRARY}
 )

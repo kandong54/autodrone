@@ -1,6 +1,8 @@
 #ifndef AUTODRONE_JETSON_SERVER
 #define AUTODRONE_JETSON_SERVER
 
+#undef Status
+
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/security/auth_metadata_processor.h>
 #include <yaml-cpp/yaml.h>

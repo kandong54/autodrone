@@ -1,6 +1,9 @@
 #ifndef AUTODRONE_JETSON_CAMERA
 #define AUTODRONE_JETSON_CAMERA
 
+#include <NvJpegDecoder.h>
+#include <cuda_runtime.h>
+#include <nvbuf_utils.h>
 #include <yaml-cpp/yaml.h>
 
 namespace jetson {
@@ -19,8 +22,14 @@ class Camera {
  private:
   YAML::Node &config_;
   int cam_fd_ = -1;
+  int model_size_;
   unsigned int sizeimage_;
-
+  NvJPEGDecoder *jpegdec_;
+  EGLDisplay egl_display_;
+  float3 *rgb_image_;
+  float3 *resize_image_;
+  float3 *model_image_;
+  
  public:
   static const int mjpeg_num = 3;
   nv_buffer mjpeg_buffer[mjpeg_num];
@@ -31,8 +40,7 @@ class Camera {
   Camera(YAML::Node &config);
   int Open();
   int Capture();
-  int Transfer();
-  bool IsOpened();
+  int Convert();
   ~Camera();
 };
 

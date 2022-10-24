@@ -9,6 +9,6 @@ detector:
   size: 640
 server:
   address: 0.0.0.0:9090
-  key_path: ../tools/cert/localhost.key
-  cert_path: ../tools/cert/localhost.crt
+  key_path: ./tools/cert/localhost.key
+  cert_path: ./tools/cert/localhost.crt
   password: f2b94662c69f9440090c9d79aa12f0f10a98b269257c2f386725936cbaa8c60d
