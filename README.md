@@ -10,4 +10,4 @@ Hello, World!
 ## User Interface
 [README](web-app/) 
 
-Quick link: [Demo](https://kandong.dev/drone/)
+Quick link: [Demo](https://io.kand.dev/drone)
