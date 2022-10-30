@@ -96,6 +96,17 @@ sudo ldconfig
 # echo "testing cv2 module under python..."
 # python3 -c "import cv2; print('OpenCV version:', str(cv2.__version__)); print(cv2.getBuildInformation())"
 
+# jetson-inference
+git clone --recursive https://github.com/dusty-nv/jetson-inference --depth 1
+cd jetson-inference && mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DBUILD_SHARED_LIBS=ON \
+         -DENABLE_NVMM=ON
+make -j$(nproc)
+sudo make install
+cd ../..
+rm -rf jetson-utils
+
 # jetson-utils
 git clone https://github.com/dusty-nv/jetson-utils --depth 1
 cd jetson-utils && mkdir build && cd build

@@ -1,4 +1,6 @@
 #include "camera.h"
+#include "model.h"
+
 // Ref: /usr/src/jetson_multimedia_api/samples/
 
 #include <asm/types.h> /* for videodev2.h */
@@ -18,7 +20,7 @@
 
 namespace jetson {
 
-Camera::Camera(YAML::Node& config) : config_(config) {
+Camera::Camera(YAML::Node& config, Model& model) : config_(config), model_(model) {
   model_size_ = config_["detector"]["size"].as<unsigned int>();
 }
 
@@ -76,6 +78,21 @@ int Camera::Open() {
                              (void**)&mjpeg_buffer[i].start))
       SPDLOG_CRITICAL("NvBufferMemMap");
   }
+  input_params.payloadType = NvBufferPayload_SurfArray;
+  input_params.width = config_["camera"]["width"].as<unsigned int>();
+  input_params.height = config_["camera"]["height"].as<unsigned int>();
+  input_params.layout = NvBufferLayout_Pitch;
+  input_params.colorFormat = NvBufferColorFormat_ABGR32;
+  input_params.nvbuf_tag = NvBufferTag_CAMERA;
+  if (-1 == NvBufferCreateEx(&trans_buffer_.dmabuff_fd, &input_params))
+    SPDLOG_CRITICAL("NvBufferCreateEx");
+  if (-1 == NvBufferMemMap(trans_buffer_.dmabuff_fd, 0, NvBufferMem_Read_Write,
+                           (void**)&trans_buffer_.start))
+    SPDLOG_CRITICAL("NvBufferMemMap");
+  // NvBufferTransformParams
+  memset(&transParams_, 0, sizeof(transParams_));
+  transParams_.transform_flag = NVBUFFER_TRANSFORM_FILTER;
+  transParams_.transform_filter = NvBufferTransform_Filter_Smart;
   /* Create egl_display that will be used in mapping DMABUF to CUDA buffer */
   egl_display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
   if (egl_display_ == EGL_NO_DISPLAY)
@@ -89,6 +106,7 @@ int Camera::Open() {
     SPDLOG_CRITICAL("cudaAllocMapped");
   if (!cudaAllocMapped((void**)&model_image_, model_size_, model_size_, IMAGE_RGB32F))
     SPDLOG_CRITICAL("cudaAllocMapped");
+  // model_image_ = (float3*)model_.GetInputPtr();
   // start_capturing
   struct v4l2_buffer buf;
   memset(&buf, 0, sizeof(buf));
@@ -170,8 +188,11 @@ int Camera::Convert() {
   if (pixfmt != V4L2_PIX_FMT_YUV420M)
     SPDLOG_WARN("pixfmt != V4L2_PIX_FMT_YUV420M");
 
+  if (-1 == NvBufferTransform(fd, trans_buffer_.dmabuff_fd, &transParams_))
+    SPDLOG_CRITICAL("Failed to convert the buffer");
+
   SPDLOG_TRACE("Read Fd");
-  EGLImageKHR egl_image = NvEGLImageFromFd(egl_display_, fd);
+  EGLImageKHR egl_image = NvEGLImageFromFd(egl_display_, trans_buffer_.dmabuff_fd);
   if (egl_image == NULL)
     SPDLOG_CRITICAL("NvEGLImageFromFd");
   CUresult status;
@@ -191,22 +212,9 @@ int Camera::Convert() {
   if (eglFrame.frameType != CU_EGL_FRAME_TYPE_PITCH)
     SPDLOG_CRITICAL("CU_EGL_FRAME_TYPE_PITCH");
 
-  SPDLOG_TRACE("YUV420 to RGB");
-  if (cudaConvertColor(eglFrame.frame.pArray[0], IMAGE_I420,
-                       rgb_image_, IMAGE_RGB32F,
-                       width, height))
-    SPDLOG_CRITICAL("cudaConvertColor");
 
-  SPDLOG_TRACE("Resize");
-  if (cudaResize(rgb_image_, width, height,
-                 resize_image_, model_size_, model_size_))
-    SPDLOG_CRITICAL("cudaConvertColor");
-
-  SPDLOG_TRACE("Normalize");
-  if (cudaNormalize(resize_image_, make_float2(0, 255),
-                    model_image_, make_float2(0, 1),
-                    model_size_, model_size_))
-    SPDLOG_CRITICAL("cudaNormalize");
+  SPDLOG_TRACE("Model");
+  model_.Process((void*)eglFrame.frame.pArray[0]);
 
   SPDLOG_TRACE("Synchronize");
   cudaDeviceSynchronize();
@@ -232,6 +240,7 @@ Camera::~Camera() {
   // uninit_device
   for (int i = 0; i < mjpeg_num; i++)
     NvBufferDestroy(mjpeg_buffer[i].dmabuff_fd);
+  NvBufferDestroy(trans_buffer_.dmabuff_fd);
   // close_device
   if (-1 == close(cam_fd_))
     SPDLOG_CRITICAL("close");
@@ -240,7 +249,7 @@ Camera::~Camera() {
   // free memory
   cudaFreeHost(rgb_image_);
   cudaFreeHost(resize_image_);
-  cudaFreeHost(model_image_);
+  // cudaFreeHost(model_image_);
   delete jpegdec_;
 }
 

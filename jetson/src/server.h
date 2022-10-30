@@ -27,11 +27,13 @@ using grpc::Status;
 namespace jetson {
 
 class Camera;
+class Model;
 
 class DroneServiceImpl final : public Drone::Service {
  private:
   YAML::Node &config_;
   Camera &camera_;
+  Model &model_;
   std::unique_ptr<Server> server_;
   std::unique_ptr<AuthMetadataProcessor> processor_;
   std::string password_hashed_;
@@ -44,7 +46,7 @@ class DroneServiceImpl final : public Drone::Service {
     unsigned int mjpeg_size = 0;
 
  public:
-  DroneServiceImpl(YAML::Node &config, Camera &camera, std::mutex &cv_m, std::condition_variable &cv);
+  DroneServiceImpl(YAML::Node &config, Camera &camera, Model &model, std::mutex &cv_m, std::condition_variable &cv);
   ~DroneServiceImpl();
   Status SayHello(ServerContext *context, const HelloRequest *request, HelloReply *reply) override;
   Status GetCamera(ServerContext *context, const Empty *request, ServerWriter<CameraReply> *writer) override;

@@ -1,4 +1,5 @@
 #include "server.h"
+#include "model.h"
 
 #include <condition_variable>
 #include <experimental/filesystem>
@@ -82,7 +83,7 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
 };
 }  // namespace
 
-DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, std::mutex &cv_m, std::condition_variable &cv) : config_(config), camera_(camera), cv_m_(cv_m), cv_(cv) {
+DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, Model &model, std::mutex &cv_m, std::condition_variable &cv) : config_(config), camera_(camera), model_(model), cv_m_(cv_m), cv_(cv) {
   std::string server_key_path = config_["server"]["key_path"].as<std::string>();
   std::string server_cert_path = config_["server"]["cert_path"].as<std::string>();
   if (!std::experimental::filesystem::exists(server_key_path)) {
@@ -150,15 +151,15 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
     // Bounding Box
     SPDLOG_TRACE("add box");
     reply.clear_box();
-    // for (int i : drone_app_->tflite.indices) {
-    //   CameraReply_BoundingBox *box = reply.add_box();
-    //   box->set_left(drone_app_->tflite.boxes[i].x);
-    //   box->set_top(drone_app_->tflite.boxes[i].y);
-    //   box->set_width(drone_app_->tflite.boxes[i].width);
-    //   box->set_height(drone_app_->tflite.boxes[i].height);
-    //   box->set_confidence(drone_app_->tflite.confs[i]);
-    //   box->set_class_(drone_app_->tflite.class_id[i]);
-    // }
+    for (int i : model_.indices) {
+      CameraReply_BoundingBox *box = reply.add_box();
+      box->set_left(model_.boxes[i].x);
+      box->set_top(model_.boxes[i].y);
+      box->set_width(model_.boxes[i].width);
+      box->set_height(model_.boxes[i].height);
+      box->set_confidence(model_.confs[i]);
+      box->set_class_(model_.class_id[i]);
+    }
     SPDLOG_TRACE("send reply");
     writer->Write(reply);
     SPDLOG_TRACE("Loop end");

@@ -7,6 +7,9 @@
 #include <yaml-cpp/yaml.h>
 
 namespace jetson {
+
+class Model;
+
 // /usr/src/jetson_multimedia_api/samples/12_camera_v4l2_cuda/camera_v4l2_cuda.h
 typedef struct
 {
@@ -21,6 +24,7 @@ typedef struct
 class Camera {
  private:
   YAML::Node &config_;
+  Model &model_;
   int cam_fd_ = -1;
   int model_size_;
   unsigned int sizeimage_;
@@ -29,6 +33,8 @@ class Camera {
   float3 *rgb_image_;
   float3 *resize_image_;
   float3 *model_image_;
+  NvBufferTransformParams transParams_;
+  nv_buffer trans_buffer_;
   
  public:
   static const int mjpeg_num = 3;
@@ -37,7 +43,7 @@ class Camera {
   unsigned int mjpeg_index = 0;
 
  public:
-  Camera(YAML::Node &config);
+  Camera(YAML::Node &config, Model &model);
   int Open();
   int Capture();
   int Convert();

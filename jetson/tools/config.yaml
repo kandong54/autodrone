@@ -3,7 +3,9 @@ camera:
   width: 1280
   height: 720
 detector:
-  model_path: ./model/best-int8.tflite
+  model_path: ./tools/yolov5n_flower.fp16.engine
+  input_layer: images
+  output_layer: output0
   confidence_threshold: 0.5
   iou_threshold: 0.45
   size: 640

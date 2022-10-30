@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
   /*
    * camera
    */
-  jetson::Camera camera(config);
+  jetson::Camera camera(config, model);
   camera.Open();
 
   /*
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
   /*
    * gRPC
    */
-  jetson::DroneServiceImpl server(config, camera,cv_m_,cv);
+  jetson::DroneServiceImpl server(config, camera, model, cv_m_, cv);
   server.Run();
   //server.Wait();
 

@@ -15,8 +15,10 @@ Up to now, it can
 - spdlog
 - OpenSSL
 - OpenGL
+- OpenCV
 - yaml-cpp
 - jetson-utils
+- jetson-inference
 - jetson_multimedia_api
 
 Run this [script](tools/libraries.sh) to build and install those libraries.
