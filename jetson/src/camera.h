@@ -35,18 +35,18 @@ class Camera {
   float3 *model_image_;
   NvBufferTransformParams transParams_;
   nv_buffer trans_buffer_;
+  nv_buffer in_jpeg_buffer_;
   
  public:
-  static const int mjpeg_num = 3;
-  nv_buffer mjpeg_buffer[mjpeg_num];
-  unsigned int mjpeg_size = 0;
+  static const int mjpeg_num = 2;
+  nv_buffer out_jpeg_buffer[mjpeg_num];
   unsigned int mjpeg_index = 0;
 
  public:
   Camera(YAML::Node &config, Model &model);
   int Open();
   int Capture();
-  int Convert();
+  int Convert(int fd);
   ~Camera();
 };
 

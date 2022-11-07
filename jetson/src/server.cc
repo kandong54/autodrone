@@ -147,7 +147,7 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
     cv_.wait(lk, [this] { return ready; });
     SPDLOG_DEBUG("Strat");
     SPDLOG_TRACE("set image");
-    reply.set_image(camera_.mjpeg_buffer[mjpeg_index].start, mjpeg_size);
+    reply.set_image(camera_.out_jpeg_buffer[mjpeg_index].start, camera_.out_jpeg_buffer[mjpeg_index].size);
     // Bounding Box
     SPDLOG_TRACE("add box");
     reply.clear_box();

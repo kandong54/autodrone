@@ -28,7 +28,7 @@ void Model::Process(void* input) {
   // preProcess
   // https://github.com/dusty-nv/jetson-inference/blob/master/c/detectNet.cpp
   // https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tao/models/peoplenet
-  if (cudaTensorNormRGB(input, IMAGE_RGBA8, camera_width_, camera_height_,
+  if (cudaTensorNormRGB(input, IMAGE_RGBA8, camera_width_ / 2, camera_height_,
                         mInputs[0].CUDA, model_size_, model_size_,
                         make_float2(0.0f, 1.0f),
                         GetStream()))
@@ -41,7 +41,7 @@ void Model::Process(void* input) {
   SPDLOG_TRACE("PostProcess");
   PostProcess();
 
-  SPDLOG_DEBUG("End");
+  SPDLOG_TRACE("End");
 }
 
 void Model::PostProcess() {

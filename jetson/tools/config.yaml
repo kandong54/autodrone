@@ -1,12 +1,12 @@
 camera:
   device: /dev/video0
-  width: 1280
+  width: 2560
   height: 720
 detector:
   model_path: ./tools/yolov5n_flower.fp16.engine
   input_layer: images
   output_layer: output0
-  confidence_threshold: 0.5
+  confidence_threshold: 0.7
   iou_threshold: 0.45
   size: 640
 server:

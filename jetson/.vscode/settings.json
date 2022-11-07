@@ -5,5 +5,15 @@
             "./tools/config.yaml"
         ],
         "cwd": "${workspaceFolder}"
+    },
+    "files.associations": {
+        "bitset": "cpp",
+        "chrono": "cpp",
+        "algorithm": "cpp",
+        "__bit_reference": "cpp",
+        "map": "cpp",
+        "set": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp"
     }
 }
