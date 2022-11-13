@@ -65,9 +65,7 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     SPDLOG_TRACE("*** Strat ***");
-    camera.Capture();  
-    camera.Encode();
-    camera.Detect();
+    camera.Run();
     SPDLOG_TRACE("notify_all");
     {
       std::lock_guard lk(cv_m_);

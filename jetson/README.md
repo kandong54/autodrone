@@ -12,6 +12,7 @@ Up to now, it can
 
 - gRPC
 - CUDA
+- VPI
 - spdlog
 - OpenSSL
 - OpenCV

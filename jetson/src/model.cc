@@ -24,11 +24,11 @@ int Model::Init() {
 }
 
 void Model::Process(void* input) {
-  SPDLOG_DEBUG("Strat");
+  SPDLOG_TRACE("Strat");
   // preProcess
   // https://github.com/dusty-nv/jetson-inference/blob/master/c/detectNet.cpp
   // https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tao/models/peoplenet
-  if (cudaTensorNormRGB(input, IMAGE_RGBA8, camera_width_, camera_height_,
+  if (cudaTensorNormRGB(input, IMAGE_RGBA8, model_size_, model_size_,
                         mInputs[0].CUDA, model_size_, model_size_,
                         make_float2(0.0f, 1.0f),
                         GetStream()))

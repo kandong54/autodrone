@@ -13,6 +13,7 @@ find_package(jetson-utils REQUIRED)
 find_package(jetson-inference REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(vpi REQUIRED)
 include(cmake/nvmpi.cmake)
 
 # Protos
@@ -27,7 +28,7 @@ add_executable(${CMAKE_PROJECT_NAME}
 
 # spdlog
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
+  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
 )
 
 target_include_directories(drone PRIVATE
@@ -49,6 +50,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   jetson-utils
   jetson-inference
   nvmpi
+  vpi
   ${OpenCV_LIBS}
   ${CUDA_CUDA_LIBRARY}
   ${CUDA_CUDART_LIBRARY}

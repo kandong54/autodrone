@@ -5,6 +5,10 @@
 #include <NvJpegEncoder.h>
 #include <cuda_runtime.h>
 #include <nvbuf_utils.h>
+#include <vpi/Image.h>
+#include <vpi/Status.h>
+#include <vpi/Stream.h>
+#include <vpi/algo/ConvertImageFormat.h>
 #include <yaml-cpp/yaml.h>
 
 namespace jetson {
@@ -32,14 +36,27 @@ class Camera {
   int capture_yuv_fd_;
   nv_buffer capture_jpeg_buffer_;
   // Detect
-  NvBufferTransformParams transParams_; // used by Detect & Encode
-  nv_buffer detect_rbg_buffer_;
+  int detect_rbg_fd_;
   // Encode
   NvJPEGEncoder *jpegenc_;
-  nv_buffer encode_yuv_buffer_;
+  int encode_yuv_fd_;
   int encode_jpeg_max_size_;
   int encode_quality_;
   // Depth
+  NvBufferTransformParams depth_left_trans_;
+  NvBufferTransformParams depth_right_trans_;
+  int depth_left_fd_;
+  int depth_right_fd_;
+  VPIImage depth_left_img_ = NULL;
+  VPIImage depth_right_img_ = NULL;
+  VPIImage depth_left_Y16_img_ = NULL;
+  VPIImage depth_right_Y16_img_ = NULL; 
+  VPIStream depth_stream_ = NULL;
+  VPIPayload depth_stereo_ = NULL;
+  VPIImage depth_disparity_ = NULL;
+  VPIImage depth_confidenceMap_ = NULL;
+  VPIConvertImageFormatParams depth_convParams_;
+
  public:
   static const int mjpeg_num = 2;
   nv_buffer encode_jpeg_list[mjpeg_num];
@@ -52,6 +69,7 @@ class Camera {
   int Detect();
   int Encode();
   int Depth();
+  int Run();   
   ~Camera();
 };
 
