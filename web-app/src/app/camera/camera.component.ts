@@ -24,7 +24,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
   constructor(private clientService: ClientService,
     private router: Router) {
     // estimated interval
-    this.interval = 30;
+    this.interval = 100;
   }
 
   ngOnInit(): void {
@@ -69,7 +69,8 @@ export class CameraComponent implements OnInit, AfterViewInit {
         let height = box.getHeight();
         this.context2D.strokeRect(x, y, width, height);
         let confidence = box.getConfidence();
-        this.context2D.fillText(Math.round(confidence * 100) + '%', x + 5, y + height - 6);
+        let depth = box.getDepth();
+        this.context2D.fillText(Math.round(confidence * 100) + '% ' + Math.round(depth) + 'cm', x + 5, y + height - 6);
       }
       URL.revokeObjectURL(image.src);
     }
@@ -77,14 +78,14 @@ export class CameraComponent implements OnInit, AfterViewInit {
 
   resizeCanvas(canvas: HTMLCanvasElement, ratio: number): void {
     // Get the size of remaining screen
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    let width = canvas.offsetWidth;
-    let height = canvas.offsetHeight;
+    let width = window.innerWidth;
+    let height = window.innerHeight - canvas.offsetTop;
     if (width / height > ratio) {
       canvas.style.width = Math.floor(height * ratio) + 'px';
+      canvas.style.height = height + 'px';
     } else {
       canvas.style.height = Math.floor(width / ratio) + 'px';
+      canvas.style.width = width + 'px';
     }
     // canvas.style.width = '50%';
     // canvas.style.height = '50%';

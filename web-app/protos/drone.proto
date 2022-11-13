@@ -28,6 +28,7 @@ message CameraReply {
     int32 height = 4;
     float confidence = 5;
     int32 class = 6;
+    float depth = 7;    
   }
   bytes image = 1;
   repeated BoundingBox box = 2;
