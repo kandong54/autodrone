@@ -24,7 +24,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
   constructor(private clientService: ClientService,
     private router: Router) {
     // estimated interval
-    this.interval = 230;
+    this.interval = 30;
   }
 
   ngOnInit(): void {
@@ -98,7 +98,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
     [this.imageWidth, this.imageHeight] = imageSize;
     this.myCanvas.nativeElement.width = this.imageWidth;
     this.myCanvas.nativeElement.height = this.imageHeight;
-    // this.resizeCanvas(this.myCanvas.nativeElement, this.imageWidth / this.imageHeight);
+    this.resizeCanvas(this.myCanvas.nativeElement, this.imageWidth / this.imageHeight);
     window.addEventListener("resize", () =>
       this.resizeCanvas(this.myCanvas.nativeElement, this.imageWidth / this.imageHeight));
   }
