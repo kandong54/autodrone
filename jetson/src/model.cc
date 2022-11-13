@@ -8,7 +8,7 @@
 namespace jetson {
 
 Model::Model(YAML::Node& config) : config_(config) {
-  camera_width_ = config_["camera"]["width"].as<int>();
+  camera_width_ = config_["camera"]["width"].as<int>() / 2;
   camera_height_ = config_["camera"]["height"].as<int>();
   model_size_ = config_["detector"]["size"].as<int>();
   conf_threshold_ = config_["detector"]["confidence_threshold"].as<float>();
@@ -41,15 +41,17 @@ void Model::Process(void* input) {
   SPDLOG_TRACE("PostProcess");
   PostProcess();
 
-  SPDLOG_DEBUG("End");
+  SPDLOG_TRACE("End");
 }
 
 void Model::PostProcess() {
   // https://github.com/itsnine/yolov5-onnxruntime/blob/master/src/detector.cpp
   SPDLOG_TRACE("Loop");
-  boxes.clear();
-  confs.clear();
-  indices.clear();
+  buffer_index = 1 - buffer_index;
+  boxes[buffer_index].clear();
+  confs[buffer_index].clear();
+  indices[buffer_index].clear();
+  class_id[buffer_index].clear();
   float* output_ptr = mOutputs[0].CPU;
   int nums = mOutputs[0].dims.d[1];
   for (int i = 0; i < (int)kArrayLen * nums; i += (int)kArrayLen) {
@@ -61,15 +63,15 @@ void Model::PostProcess() {
       int height =output_ptr[i + kHeight] / model_size_ * camera_height_;
       int left = center_x - width / 2;
       int top = center_y - height / 2;
-      boxes.emplace_back(left, top, width, height);
-      confs.emplace_back(output_ptr[i + kConfidence]);
-      class_id.emplace_back(1);
+      boxes[buffer_index].emplace_back(left, top, width, height);
+      confs[buffer_index].emplace_back(output_ptr[i + kConfidence]);
+      class_id[buffer_index].emplace_back(1);
     }
   }
   // NMS
   SPDLOG_TRACE("NMSBoxes");
-  cv::dnn::NMSBoxes(boxes, confs, conf_threshold_, iou_threshold_, indices);
-  SPDLOG_TRACE("Total: {}", indices.size());
+  cv::dnn::NMSBoxes(boxes[buffer_index], confs[buffer_index], conf_threshold_, iou_threshold_, indices[buffer_index]);
+  SPDLOG_TRACE("Total: {}", indices[buffer_index].size());
   SPDLOG_TRACE("End");
 }
 

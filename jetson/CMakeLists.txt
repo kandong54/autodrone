@@ -12,7 +12,6 @@ find_package(OpenSSL REQUIRED)
 find_package(jetson-utils REQUIRED)
 find_package(jetson-inference REQUIRED)
 find_package(CUDA REQUIRED)
-find_package(OpenGL REQUIRED COMPONENTS OpenGL EGL)
 find_package(OpenCV REQUIRED)
 include(cmake/nvmpi.cmake)
 
@@ -28,7 +27,7 @@ add_executable(${CMAKE_PROJECT_NAME}
 
 # spdlog
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
+  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
 )
 
 target_include_directories(drone PRIVATE
@@ -50,8 +49,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   jetson-utils
   jetson-inference
   nvmpi
-  OpenGL::OpenGL
-  OpenGL::EGL
   ${OpenCV_LIBS}
   ${CUDA_CUDA_LIBRARY}
   ${CUDA_CUDART_LIBRARY}

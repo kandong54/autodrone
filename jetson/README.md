@@ -11,10 +11,9 @@ Up to now, it can
 ### Dependencies
 
 - gRPC
-- TensorRT
+- CUDA
 - spdlog
 - OpenSSL
-- OpenGL
 - OpenCV
 - yaml-cpp
 - jetson-utils

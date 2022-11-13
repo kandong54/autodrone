@@ -1,5 +1,4 @@
 #include "server.h"
-#include "model.h"
 
 #include <condition_variable>
 #include <experimental/filesystem>
@@ -10,6 +9,7 @@
 #include <string>
 
 #include "camera.h"
+#include "model.h"
 #undef Status
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 // #include <grpcpp/health_check_service_interface.h>
@@ -147,18 +147,18 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
     cv_.wait(lk, [this] { return ready; });
     SPDLOG_DEBUG("Strat");
     SPDLOG_TRACE("set image");
-    reply.set_image(camera_.mjpeg_buffer[mjpeg_index].start, mjpeg_size);
+    reply.set_image(camera_.encode_jpeg_list[jpeg_index].start, camera_.encode_jpeg_list[jpeg_index].size);
     // Bounding Box
     SPDLOG_TRACE("add box");
     reply.clear_box();
-    for (int i : model_.indices) {
+    for (int i : model_.indices[box_index]) {
       CameraReply_BoundingBox *box = reply.add_box();
-      box->set_left(model_.boxes[i].x);
-      box->set_top(model_.boxes[i].y);
-      box->set_width(model_.boxes[i].width);
-      box->set_height(model_.boxes[i].height);
-      box->set_confidence(model_.confs[i]);
-      box->set_class_(model_.class_id[i]);
+      box->set_left(model_.boxes[box_index][i].x);
+      box->set_top(model_.boxes[box_index][i].y);
+      box->set_width(model_.boxes[box_index][i].width);
+      box->set_height(model_.boxes[box_index][i].height);
+      box->set_confidence(model_.confs[box_index][i]);
+      box->set_class_(model_.class_id[box_index][i]);
     }
     SPDLOG_TRACE("send reply");
     writer->Write(reply);
@@ -170,7 +170,7 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
 
 Status DroneServiceImpl::GetImageSize([[maybe_unused]] ServerContext *context, [[maybe_unused]] const Empty *request, ImageSize *reply) {
   SPDLOG_INFO("GetImageSize");
-  reply->set_width(config_["camera"]["width"].as<unsigned int>());
+  reply->set_width(config_["camera"]["width"].as<unsigned int>() / 2);
   reply->set_height(config_["camera"]["height"].as<unsigned int>());
   return Status::OK;
 }

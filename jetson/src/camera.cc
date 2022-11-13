@@ -1,9 +1,12 @@
 #include "camera.h"
+
 #include "model.h"
 
 // Ref: /usr/src/jetson_multimedia_api/samples/
+//      https://github.com/dusty-nv/jetson-utils/blob/master/codec/gstBufferManager.cpp
 
 #include <asm/types.h> /* for videodev2.h */
+#include <cuda_egl_interop.h>
 #include <fcntl.h>
 #include <jetson-utils/cudaColorspace.h>
 #include <jetson-utils/cudaMappedMemory.h>
@@ -14,17 +17,24 @@
 #include <spdlog/spdlog.h>
 #include <stdlib.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <unistd.h>
-
-#include "cudaEGL.h"
 
 namespace jetson {
 
 Camera::Camera(YAML::Node& config, Model& model) : config_(config), model_(model) {
-  model_size_ = config_["detector"]["size"].as<unsigned int>();
+  memset(encode_jpeg_list, 0, mjpeg_num * sizeof(nv_buffer));
+  const int model_size = config_["detector"]["size"].as<unsigned int>();
+  // how to set the maximal size?
+  encode_jpeg_max_size_ = model_size * model_size * 3;
+  encode_quality_ = config_["camera"]["quality"].as<unsigned int>();
 }
 
 int Camera::Open() {
+  // const
+  const int model_size = config_["detector"]["size"].as<unsigned int>();
+  const int camera_width = config_["camera"]["width"].as<unsigned int>();
+  const int camera_height = config_["camera"]["height"].as<unsigned int>();
   // open_device
   // camera
   std::string dev_name = config_["camera"]["device"].as<std::string>();
@@ -35,6 +45,10 @@ int Camera::Open() {
   jpegdec_ = NvJPEGDecoder::createJPEGDecoder("jpegdec");
   if (!jpegdec_)
     SPDLOG_CRITICAL("Failed to create NvJPEGDecoder");
+  // NvJPEGEncoder
+  jpegenc_ = NvJPEGEncoder::createJPEGEncoder("jpegenc");
+  if (!jpegenc_)
+    SPDLOG_CRITICAL("Failed to create NvJPEGEncoder");
   // init_device
   struct v4l2_capability cap;
   ioctl(cam_fd_, VIDIOC_QUERYCAP, &cap);
@@ -51,85 +65,101 @@ int Camera::Open() {
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   // v4l2-ctl --list-formats-ext
-  fmt.fmt.pix.width = config_["camera"]["width"].as<unsigned int>();
-  fmt.fmt.pix.height = config_["camera"]["height"].as<unsigned int>();
+  fmt.fmt.pix.width = camera_width;
+  fmt.fmt.pix.height = camera_height;
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
   fmt.fmt.pix.field = V4L2_FIELD_ANY;
   if (-1 == ioctl(cam_fd_, VIDIOC_S_FMT, &fmt))
     SPDLOG_CRITICAL("VIDIOC_S_FMT");
-  sizeimage_ = fmt.fmt.pix.sizeimage;
+  SPDLOG_INFO("sizeimage: {}", fmt.fmt.pix.sizeimage);
 
+  struct v4l2_streamparm streamparm;
+  memset(&streamparm, 0, sizeof(struct v4l2_streamparm));
+  streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  // try to set fps. But it does not work.
+  streamparm.parm.capture.timeperframe.numerator = 1;
+  streamparm.parm.capture.timeperframe.denominator = 30;
+  if (-1 == ioctl(cam_fd_, VIDIOC_G_PARM, &streamparm))
+    SPDLOG_CRITICAL("VIDIOC_G_PARM");
+  SPDLOG_INFO("FPS: {} / {}",
+              streamparm.parm.capture.timeperframe.denominator,
+              streamparm.parm.capture.timeperframe.numerator);
+
+  // mmap instead of dmabuf
   struct v4l2_requestbuffers reqbuf;
   memset(&reqbuf, 0, sizeof(reqbuf));
   reqbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  reqbuf.memory = V4L2_MEMORY_DMABUF;
+  reqbuf.memory = V4L2_MEMORY_MMAP;
   reqbuf.count = 1;
   if (ioctl(cam_fd_, VIDIOC_REQBUFS, &reqbuf) == -1)
     SPDLOG_CRITICAL("VIDIOC_REQBUFS");
-  // init_cuda
-  NvBufferCreateParams input_params = {0};
-  input_params.payloadType = NvBufferPayload_MemHandle;
-  input_params.memsize = sizeimage_;
-  input_params.nvbuf_tag = NvBufferTag_CAMERA;
-  for (int i = 0; i < mjpeg_num; i++) {
-    if (-1 == NvBufferCreateEx(&mjpeg_buffer[i].dmabuff_fd, &input_params))
-      SPDLOG_CRITICAL("NvBufferCreateEx");
-    if (-1 == NvBufferMemMap(mjpeg_buffer[i].dmabuff_fd, 0, NvBufferMem_Read_Write,
-                             (void**)&mjpeg_buffer[i].start))
-      SPDLOG_CRITICAL("NvBufferMemMap");
+
+  // allocate memory
+  // jpeg for gRPC (CPU address)
+  for (size_t i = 0; i < mjpeg_num; i++) {
+    encode_jpeg_list[i].start = (unsigned char*)malloc(encode_jpeg_max_size_);
   }
+  // detect_rbg_buffer_
+  NvBufferCreateParams input_params = {0};
   input_params.payloadType = NvBufferPayload_SurfArray;
-  input_params.width = config_["camera"]["width"].as<unsigned int>();
+  input_params.width = config_["camera"]["width"].as<unsigned int>() / 2;
   input_params.height = config_["camera"]["height"].as<unsigned int>();
   input_params.layout = NvBufferLayout_Pitch;
   input_params.colorFormat = NvBufferColorFormat_ABGR32;
-  input_params.nvbuf_tag = NvBufferTag_CAMERA;
-  if (-1 == NvBufferCreateEx(&trans_buffer_.dmabuff_fd, &input_params))
+  input_params.nvbuf_tag = NvBufferTag_NONE;
+  if (-1 == NvBufferCreateEx(&detect_rbg_buffer_.dmabuff_fd, &input_params))
     SPDLOG_CRITICAL("NvBufferCreateEx");
-  if (-1 == NvBufferMemMap(trans_buffer_.dmabuff_fd, 0, NvBufferMem_Read_Write,
-                           (void**)&trans_buffer_.start))
-    SPDLOG_CRITICAL("NvBufferMemMap");
-  // NvBufferTransformParams
-  memset(&transParams_, 0, sizeof(transParams_));
-  transParams_.transform_flag = NVBUFFER_TRANSFORM_FILTER;
+  // encode_yuv_buffer_
+  input_params.colorFormat = NvBufferColorFormat_YUV420;
+  input_params.nvbuf_tag = NvBufferTag_JPEG;
+  if (-1 == NvBufferCreateEx(&encode_yuv_buffer_.dmabuff_fd, &input_params))
+    SPDLOG_CRITICAL("NvBufferCreateEx");
+  // transParams_, FILTER & CROP
+  memset(&transParams_, 0, sizeof(NvBufferTransformParams));
+  transParams_.transform_flag = NVBUFFER_TRANSFORM_CROP_SRC | NVBUFFER_TRANSFORM_FILTER;
   transParams_.transform_filter = NvBufferTransform_Filter_Smart;
-  /* Create egl_display that will be used in mapping DMABUF to CUDA buffer */
-  egl_display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-  if (egl_display_ == EGL_NO_DISPLAY)
-    SPDLOG_CRITICAL("Error while get EGL display connection");
-  if (!eglInitialize(egl_display_, NULL, NULL))
-    SPDLOG_CRITICAL("Erro while initialize EGL display connection");
-  if (!cudaAllocMapped((void**)&rgb_image_, config_["camera"]["width"].as<unsigned int>(),
-                       config_["camera"]["height"].as<unsigned int>(), IMAGE_RGB32F))
-    SPDLOG_CRITICAL("cudaAllocMapped");
-  if (!cudaAllocMapped((void**)&resize_image_, model_size_, model_size_, IMAGE_RGB32F))
-    SPDLOG_CRITICAL("cudaAllocMapped");
-  if (!cudaAllocMapped((void**)&model_image_, model_size_, model_size_, IMAGE_RGB32F))
-    SPDLOG_CRITICAL("cudaAllocMapped");
-  // model_image_ = (float3*)model_.GetInputPtr();
-  // start_capturing
+  transParams_.src_rect.top = 0;
+  transParams_.src_rect.left = 0;
+  transParams_.src_rect.width = input_params.width;
+  transParams_.src_rect.height = input_params.height;
+
+  // queue buff
   struct v4l2_buffer buf;
   memset(&buf, 0, sizeof(buf));
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  buf.memory = V4L2_MEMORY_DMABUF;
+  buf.memory = V4L2_MEMORY_MMAP;
   buf.index = 0;
   if (ioctl(cam_fd_, VIDIOC_QUERYBUF, &buf) < 0)
     SPDLOG_CRITICAL("VIDIOC_QUERYBUF");
-  mjpeg_index = 0;
-  buf.m.fd = (unsigned long)mjpeg_buffer[mjpeg_index].dmabuff_fd;
+  capture_jpeg_buffer_.size = buf.length;
+  capture_jpeg_buffer_.start = (unsigned char*)
+      mmap(NULL /* start anywhere */,
+           buf.length,
+           PROT_READ | PROT_WRITE /* required */,
+           MAP_SHARED /* recommended */,
+           cam_fd_, buf.m.offset);
+  if (MAP_FAILED == capture_jpeg_buffer_.start)
+    SPDLOG_CRITICAL("Failed to map buffers");
   if (-1 == ioctl(cam_fd_, VIDIOC_QBUF, &buf))
     SPDLOG_CRITICAL("VIDIOC_QBUF");
+  // start_capturing
   enum v4l2_buf_type type;
   type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (-1 == ioctl(cam_fd_, VIDIOC_STREAMON, &type))
     SPDLOG_CRITICAL("VIDIOC_STREAMON");
   // warm up
+  usleep(3000000);  // wait for hardware?
+  Capture();        // skip the first frame
   Capture();
+  Encode();
+  Depth();
+  Detect();
   return 0;
 }
 
 int Camera::Capture() {
   SPDLOG_DEBUG("Strat");
+
   struct pollfd fds[1];
   fds[0].fd = cam_fd_;
   fds[0].events = POLLIN;
@@ -138,95 +168,111 @@ int Camera::Capture() {
     SPDLOG_CRITICAL("poll");
   if (!(fds[0].revents & POLLIN))
     SPDLOG_CRITICAL("revents");
+
   SPDLOG_TRACE("v4l2_buffer");
   /* Dequeue a camera buff */
   struct v4l2_buffer v4l2_buf;
   memset(&v4l2_buf, 0, sizeof(v4l2_buf));
   v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  v4l2_buf.memory = V4L2_MEMORY_DMABUF;
+  v4l2_buf.memory = V4L2_MEMORY_MMAP;
   SPDLOG_TRACE("VIDIOC_DQBUF");
   if (-1 == ioctl(cam_fd_, VIDIOC_DQBUF, &v4l2_buf))
     SPDLOG_CRITICAL("VIDIOC_DQBUF");
-  SPDLOG_TRACE("NvBufferMemSyncForDevice");
-  /* Cache sync for VIC operation since the data is from CPU */
-  // NvBufferMemSyncForDevice(mjpeg_buffer[mjpeg_index].dmabuff_fd, 0,
-  //                          (void**)&mjpeg_buffer[mjpeg_index].start);
+
   SPDLOG_TRACE("bytesused");
   /* v4l2_buf.bytesused may have padding bytes for alignment
      Search for EOF to get exact size */
   unsigned int bytesused = v4l2_buf.bytesused;
   uint8_t* p;
   while (bytesused) {
-    p = (uint8_t*)(mjpeg_buffer[mjpeg_index].start + bytesused);
+    p = (uint8_t*)(capture_jpeg_buffer_.start + bytesused);
     if ((*(p - 2) == 0xff) && (*(p - 1) == 0xd9)) {
       break;
     }
     bytesused--;
   }
-  // update index
-  mjpeg_size = bytesused;
-  mjpeg_index = (mjpeg_index + 1) % mjpeg_num;
+
+  SPDLOG_TRACE("decodeToFd");
+  uint32_t width, height, pixfmt;
+  int ret = jpegdec_->decodeToFd(capture_yuv_fd_, capture_jpeg_buffer_.start, bytesused, pixfmt, width, height);
+  if (ret < 0)
+    SPDLOG_CRITICAL("decodeToFd");
+  if (pixfmt != V4L2_PIX_FMT_YUV422M)
+    SPDLOG_WARN("pixfmt != V4L2_PIX_FMT_YUV422M");
+
+  cudaDeviceSynchronize();
+
   SPDLOG_TRACE("VIDIOC_QBUF");
-  v4l2_buf.m.fd = (unsigned long)mjpeg_buffer[mjpeg_index].dmabuff_fd;
   if (-1 == ioctl(cam_fd_, VIDIOC_QBUF, &v4l2_buf))
     SPDLOG_CRITICAL("VIDIOC_QBUF");
-  SPDLOG_TRACE("Convert");
-  Convert();
   SPDLOG_TRACE("End");
   return 0;
 }
 
-int Camera::Convert() {
+int Camera::Encode() {
+  SPDLOG_TRACE("Strat");
+  SPDLOG_TRACE("NvBufferTransform");  // YUV422 & stereo -> YUV420 & right
+  if (-1 == NvBufferTransform(capture_yuv_fd_, encode_yuv_buffer_.dmabuff_fd, &transParams_))
+    SPDLOG_CRITICAL("Failed to convert the buffer");
+  SPDLOG_TRACE("Encode");
+  encode_index = 1 - encode_index;
+  encode_jpeg_list[encode_index].size = encode_jpeg_max_size_;
+  if (0 != jpegenc_->encodeFromFd(encode_yuv_buffer_.dmabuff_fd, JCS_YCbCr,
+                                  &encode_jpeg_list[encode_index].start, encode_jpeg_list[encode_index].size,
+                                  encode_quality_))
+    SPDLOG_CRITICAL("encodeFromFd");
+  if (encode_jpeg_list[encode_index].size > encode_jpeg_max_size_)
+    SPDLOG_CRITICAL("encode_jpeg_max_size_ < {}", encode_jpeg_list[encode_index].size);
+  SPDLOG_TRACE("End");
+  return 0;
+}
+
+int Camera::Depth() {
   SPDLOG_TRACE("Strat");
 
-  SPDLOG_TRACE("decodeToFd");
-  int fd = 0;
-  uint32_t width, height, pixfmt;
-  int ret = jpegdec_->decodeToFd(fd, mjpeg_buffer[(mjpeg_index + mjpeg_num - 1) % mjpeg_num].start, mjpeg_size, pixfmt, width, height);
-  if (ret < 0)
-    SPDLOG_CRITICAL("decodeToFd");
-  if (pixfmt != V4L2_PIX_FMT_YUV420M)
-    SPDLOG_WARN("pixfmt != V4L2_PIX_FMT_YUV420M");
+  SPDLOG_TRACE("End");
+  return 0;
+}
 
-  if (-1 == NvBufferTransform(fd, trans_buffer_.dmabuff_fd, &transParams_))
+int Camera::Detect() {
+  SPDLOG_TRACE("Strat");
+
+  SPDLOG_TRACE("NvBufferTransform");  // YUV422 & stereo -> rgb & right
+  if (-1 == NvBufferTransform(capture_yuv_fd_, detect_rbg_buffer_.dmabuff_fd, &transParams_))
     SPDLOG_CRITICAL("Failed to convert the buffer");
 
+  // uchar4* pdata;
+  // NvBufferMemMap(detect_rbg_buffer_.dmabuff_fd, 0, NvBufferMem_Read, (void**)&pdata);
+  // NvBufferMemSyncForCpu(detect_rbg_buffer_.dmabuff_fd, 0, (void**)&pdata);
+  // NvBufferMemUnMap(detect_rbg_buffer_.dmabuff_fd, 0, (void**)&pdata);
+
   SPDLOG_TRACE("Read Fd");
-  EGLImageKHR egl_image = NvEGLImageFromFd(egl_display_, trans_buffer_.dmabuff_fd);
+  EGLImageKHR egl_image = NvEGLImageFromFd(NULL, detect_rbg_buffer_.dmabuff_fd);
   if (egl_image == NULL)
     SPDLOG_CRITICAL("NvEGLImageFromFd");
-  CUresult status;
-  CUeglFrame eglFrame;
-  CUgraphicsResource pResource = NULL;
-  cudaFree(0);
-  status = cuGraphicsEGLRegisterImage(&pResource, egl_image,
-                                      CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE);
-  if (status != CUDA_SUCCESS)
-    SPDLOG_CRITICAL("cuGraphicsEGLRegisterImage");
-  status = cuGraphicsResourceGetMappedEglFrame(&eglFrame, pResource, 0, 0);
-  if (status != CUDA_SUCCESS)
+  cudaEglFrame eglFrame;
+  cudaGraphicsResource* eglResource = NULL;
+  //cudaFree(0);
+  if (CUDA_FAILED(cudaGraphicsEGLRegisterImage(&eglResource, egl_image,
+                                               CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE)))
+    SPDLOG_CRITICAL("cudaGraphicsEGLRegisterImage");
+  if (CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource, 0, 0)))
     SPDLOG_CRITICAL("cuGraphicsResourceGetMappedEglFrame");
-  status = cuCtxSynchronize();
-  if (status != CUDA_SUCCESS)
-    SPDLOG_CRITICAL("cuCtxSynchronize");
-  if (eglFrame.frameType != CU_EGL_FRAME_TYPE_PITCH)
-    SPDLOG_CRITICAL("CU_EGL_FRAME_TYPE_PITCH");
 
+  if (eglFrame.frameType != cudaEglFrameTypePitch)
+    SPDLOG_CRITICAL("{} != cudaEglFrameTypePitch", eglFrame.frameType);
 
   SPDLOG_TRACE("Model");
   model_.Process((void*)eglFrame.frame.pArray[0]);
+  // uchar4 tmp[2560/2][720];
+  // cudaMemcpy(tmp, eglFrame.frame.pArray[0],2560/2 * 720 * 4, cudaMemcpyDeviceToHost);
 
   SPDLOG_TRACE("Synchronize");
   cudaDeviceSynchronize();
-  // SPDLOG_TRACE("cuCtxSynchronize");
-  // status = cuCtxSynchronize();
-  // if (status != CUDA_SUCCESS)
-  //   SPDLOG_CRITICAL("cuCtxSynchronize");
   SPDLOG_TRACE("cleanup");
-  status = cuGraphicsUnregisterResource(pResource);
-  if (status != CUDA_SUCCESS)
-    SPDLOG_CRITICAL("cuGraphicsUnregisterResource");
-  NvDestroyEGLImage(egl_display_, egl_image);
+  if (CUDA_FAILED(cudaGraphicsUnregisterResource(eglResource)))
+    SPDLOG_CRITICAL("cudaGraphicsUnregisterResource");
+  NvDestroyEGLImage(NULL, egl_image);
   SPDLOG_TRACE("End");
   return 0;
 }
@@ -238,19 +284,18 @@ Camera::~Camera() {
   if (-1 == ioctl(cam_fd_, VIDIOC_STREAMOFF, &type))
     SPDLOG_CRITICAL("VIDIOC_STREAMOFF");
   // uninit_device
-  for (int i = 0; i < mjpeg_num; i++)
-    NvBufferDestroy(mjpeg_buffer[i].dmabuff_fd);
-  NvBufferDestroy(trans_buffer_.dmabuff_fd);
+  munmap(capture_jpeg_buffer_.start, capture_jpeg_buffer_.size);
   // close_device
   if (-1 == close(cam_fd_))
     SPDLOG_CRITICAL("close");
-  if (!eglTerminate(egl_display_))
-    SPDLOG_CRITICAL("eglTerminate");
   // free memory
-  cudaFreeHost(rgb_image_);
-  cudaFreeHost(resize_image_);
-  // cudaFreeHost(model_image_);
+  NvBufferDestroy(detect_rbg_buffer_.dmabuff_fd);
+  NvBufferDestroy(encode_yuv_buffer_.dmabuff_fd);
+  for (size_t i = 0; i < mjpeg_num; i++) {
+    free(encode_jpeg_list[i].start);
+  }
   delete jpegdec_;
+  delete jpegenc_;
 }
 
 }  // namespace jetson

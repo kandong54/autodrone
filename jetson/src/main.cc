@@ -65,13 +65,15 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     SPDLOG_TRACE("*** Strat ***");
-    camera.Capture();
+    camera.Capture();  
+    camera.Encode();
+    camera.Detect();
     SPDLOG_TRACE("notify_all");
     {
       std::lock_guard lk(cv_m_);
       server.ready = true;
-      server.mjpeg_index = (camera.mjpeg_index + camera.mjpeg_num - 1) % camera.mjpeg_num;
-      server.mjpeg_size = camera.mjpeg_size;
+      server.jpeg_index = camera.encode_index;
+      server.box_index = model.buffer_index;
     }
     cv.notify_all();
     SPDLOG_TRACE("*** End ***");
