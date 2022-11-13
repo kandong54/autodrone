@@ -8,6 +8,7 @@ add_library(nvmpi
   /usr/src/jetson_multimedia_api/samples/common/classes/NvElementProfiler.cpp
   /usr/src/jetson_multimedia_api/samples/common/classes/NvLogging.cpp
   /usr/src/jetson_multimedia_api/samples/common/classes/NvJpegDecoder.cpp
+  /usr/src/jetson_multimedia_api/samples/common/classes/NvJpegEncoder.cpp
 )
 
 target_link_libraries(nvmpi PRIVATE ${LIB_NVJPEG})

@@ -42,8 +42,8 @@ class DroneServiceImpl final : public Drone::Service {
 
  public:
   bool ready = false;
-  unsigned int mjpeg_index = 0;
-    unsigned int mjpeg_size = 0;
+  unsigned int jpeg_index = 0;
+  unsigned int box_index = 0;
 
  public:
   DroneServiceImpl(YAML::Node &config, Camera &camera, Model &model, std::mutex &cv_m, std::condition_variable &cv);

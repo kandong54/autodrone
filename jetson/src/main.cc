@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
    * TensorRT
    */
   jetson::Model model(config);
-  //model.Init();
+  model.Init();
 
   /*
    * camera
@@ -55,27 +55,29 @@ int main(int argc, char* argv[]) {
   /*
    * gRPC
    */
-  // jetson::DroneServiceImpl server(config, camera, model, cv_m_, cv);
-  // server.Run();
+  jetson::DroneServiceImpl server(config, camera, model, cv_m_, cv);
+  server.Run();
   //server.Wait();
 
   /*
    * Main Loop
    */
 
-  // while (false) {
-  //   SPDLOG_TRACE("*** Strat ***");
-  //   camera.Capture();
-  //   SPDLOG_TRACE("notify_all");
-  //   {
-  //     std::lock_guard lk(cv_m_);
-  //     server.ready = true;
-  //     server.mjpeg_index = (camera.mjpeg_index + camera.mjpeg_num - 1) % camera.mjpeg_num;
-  //     server.mjpeg_size = camera.mjpeg_size;
-  //   }
-  //   cv.notify_all();
-  //   SPDLOG_TRACE("*** End ***");
-  // }
+  while (true) {
+    SPDLOG_TRACE("*** Strat ***");
+    camera.Capture();  
+    camera.Encode();
+    camera.Detect();
+    SPDLOG_TRACE("notify_all");
+    {
+      std::lock_guard lk(cv_m_);
+      server.ready = true;
+      server.jpeg_index = camera.encode_index;
+      server.box_index = model.buffer_index;
+    }
+    cv.notify_all();
+    SPDLOG_TRACE("*** End ***");
+  }
 
   return 0;
 }

@@ -17,10 +17,12 @@ class Model : public tensorNet {
   float iou_threshold_;
 
  public:
-  std::vector<cv::Rect> boxes;
-  std::vector<float> confs;
-  std::vector<int> class_id;
-  std::vector<int> indices;
+  static const int buffer_num = 2;
+  unsigned int buffer_index = 0;
+  std::vector<cv::Rect> boxes[buffer_num];
+  std::vector<float> confs[buffer_num];
+  std::vector<int> class_id[buffer_num];
+  std::vector<int> indices[buffer_num];
 
  public:
   Model(YAML::Node &config);

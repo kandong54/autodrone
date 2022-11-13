@@ -2,6 +2,7 @@ camera:
   device: /dev/video0
   width: 2560
   height: 720
+  quality: 10
 detector:
   model_path: ./tools/yolov5n_flower.fp16.engine
   input_layer: images
