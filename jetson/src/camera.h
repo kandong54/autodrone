@@ -43,6 +43,8 @@ class Camera {
   int encode_jpeg_max_size_;
   int encode_quality_;
   // Depth
+  int depth_factor_;
+  int camera_width_;
   NvBufferTransformParams depth_left_trans_;
   NvBufferTransformParams depth_right_trans_;
   int depth_left_fd_;
@@ -50,9 +52,11 @@ class Camera {
   VPIImage depth_left_img_ = NULL;
   VPIImage depth_right_img_ = NULL;
   VPIImage depth_left_Y16_img_ = NULL;
-  VPIImage depth_right_Y16_img_ = NULL; 
+  VPIImage depth_right_Y16_img_ = NULL;
   VPIStream depth_stream_ = NULL;
   VPIPayload depth_stereo_ = NULL;
+  void * depth_disparity_data_;
+  void * depth_confidenceMap_data_; 
   VPIImage depth_disparity_ = NULL;
   VPIImage depth_confidenceMap_ = NULL;
   VPIConvertImageFormatParams depth_convParams_;
@@ -62,6 +66,7 @@ class Camera {
   nv_buffer encode_jpeg_list[mjpeg_num];
   unsigned int encode_index = 0;
 
+
  public:
   Camera(YAML::Node &config, Model &model);
   int Open();
@@ -69,7 +74,8 @@ class Camera {
   int Detect();
   int Encode();
   int Depth();
-  int Run();   
+  int PostDepth();  
+  int RunParallel();
   ~Camera();
 };
 

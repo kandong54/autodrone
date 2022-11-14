@@ -7,6 +7,7 @@
         "cwd": "${workspaceFolder}"
     },
     "files.associations": {
+        "*.tcc": "cpp",
         "bitset": "cpp",
         "chrono": "cpp",
         "algorithm": "cpp",
@@ -14,21 +15,6 @@
         "map": "cpp",
         "set": "cpp",
         "unordered_map": "cpp",
-        "unordered_set": "cpp",
-        "condition_variable": "cpp",
-        "filesystem": "cpp",
-        "*.tcc": "cpp",
-        "deque": "cpp",
-        "forward_list": "cpp",
-        "list": "cpp",
-        "string": "cpp",
-        "vector": "cpp",
-        "any": "cpp",
-        "system_error": "cpp",
-        "__hash_table": "cpp",
-        "__split_buffer": "cpp",
-        "__tree": "cpp",
-        "atomic": "cpp",
-        "ios": "cpp"
+        "unordered_set": "cpp"
     }
 }

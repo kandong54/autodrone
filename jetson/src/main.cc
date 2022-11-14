@@ -1,9 +1,8 @@
 #include <camera.h>
-#include <server.h>
 #include <model.h>
+#include <server.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
-#include <cuda_runtime.h>
 
 #include <condition_variable>
 #include <experimental/filesystem>
@@ -33,7 +32,7 @@ int main(int argc, char* argv[]) {
    * GPU
    */
   cudaDeviceReset();
-  
+
   /*
    * TensorRT
    */
@@ -57,7 +56,7 @@ int main(int argc, char* argv[]) {
    */
   jetson::DroneServiceImpl server(config, camera, model, cv_m_, cv);
   server.Run();
-  //server.Wait();
+  // server.Wait();
 
   /*
    * Main Loop
@@ -65,7 +64,11 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     SPDLOG_TRACE("*** Strat ***");
-    camera.Run();
+    camera.RunParallel();
+    // camera.Capture();
+    // camera.Encode();
+    // camera.Depth();
+    // camera.Detect();
     SPDLOG_TRACE("notify_all");
     {
       std::lock_guard lk(cv_m_);

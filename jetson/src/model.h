@@ -23,6 +23,7 @@ class Model : public tensorNet {
   std::vector<float> confs[buffer_num];
   std::vector<int> class_id[buffer_num];
   std::vector<int> indices[buffer_num];
+  std::vector<float> depth[buffer_num];
 
  public:
   Model(YAML::Node &config);

@@ -28,7 +28,7 @@ add_executable(${CMAKE_PROJECT_NAME}
 
 # spdlog
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_TRACE
+  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
 )
 
 target_include_directories(drone PRIVATE

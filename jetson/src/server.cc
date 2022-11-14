@@ -151,6 +151,7 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
     // Bounding Box
     SPDLOG_TRACE("add box");
     reply.clear_box();
+    int count = 0;
     for (int i : model_.indices[box_index]) {
       CameraReply_BoundingBox *box = reply.add_box();
       box->set_left(model_.boxes[box_index][i].x);
@@ -159,6 +160,7 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
       box->set_height(model_.boxes[box_index][i].height);
       box->set_confidence(model_.confs[box_index][i]);
       box->set_class_(model_.class_id[box_index][i]);
+      box->set_depth(model_.depth[box_index][count++]);
     }
     SPDLOG_TRACE("send reply");
     writer->Write(reply);
