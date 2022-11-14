@@ -23,7 +23,10 @@
 #include <vpi/CUDAInterop.h>
 #include <vpi/NvBufferInterop.h>
 #include <vpi/algo/StereoDisparity.h>
+#include <vpi/algo/TemporalNoiseReduction.h>
 
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/imgproc.hpp>
 #include <thread>
 
 namespace jetson {
@@ -65,11 +68,15 @@ int Camera::Open() {
   if (0 != vpiInitStereoDisparityEstimatorCreationParams(&stereoParams))
     SPDLOG_CRITICAL("vpiInitStereoDisparityEstimatorCreationParams");
   stereoParams.maxDisparity = 64;
-  if (0 != vpiCreateStereoDisparityEstimator(VPI_BACKEND_CUDA, camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_Y16_ER, &stereoParams, &depth_stereo_))
+  if (0 != vpiCreateStereoDisparityEstimator(VPI_BACKEND_CUDA, camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, &stereoParams, &depth_stereo_))
     SPDLOG_CRITICAL("vpiCreateStereoDisparityEstimator");
-  if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_Y16_ER, VPI_BACKEND_CUDA, &depth_left_Y16_img_))
+  if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_left_ER_img_))
     SPDLOG_CRITICAL("vpiImageCreate");
-  if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_Y16_ER, VPI_BACKEND_CUDA, &depth_right_Y16_img_))
+  if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_right_ER_img_))
+    SPDLOG_CRITICAL("vpiImageCreate");    
+  if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_left_nr_img_))
+    SPDLOG_CRITICAL("vpiImageCreate");
+  if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_right_nr_img_))
     SPDLOG_CRITICAL("vpiImageCreate");
   if (0 != cudaMallocManaged(&depth_disparity_data_, (camera_width / depth_factor) * (camera_height / depth_factor) * 2))
     SPDLOG_CRITICAL("vpiImageCreate");
@@ -114,7 +121,7 @@ int Camera::Open() {
   fmt.fmt.pix.field = V4L2_FIELD_ANY;
   if (0 != ioctl(cam_fd_, VIDIOC_S_FMT, &fmt))
     SPDLOG_CRITICAL("VIDIOC_S_FMT");
-  SPDLOG_INFO("sizeimage: {}", fmt.fmt.pix.sizeimage);
+  SPDLOG_INFO("{},{} sizeimage: {}", fmt.fmt.pix.width, fmt.fmt.pix.height, fmt.fmt.pix.sizeimage);
 
   struct v4l2_streamparm streamparm;
   memset(&streamparm, 0, sizeof(struct v4l2_streamparm));
@@ -164,6 +171,10 @@ int Camera::Open() {
     SPDLOG_CRITICAL("vpiImageCreateNvBufferWrapper");
   if (0 != vpiImageCreateNvBufferWrapper(depth_right_fd_, NULL, 0, &depth_right_img_))
     SPDLOG_CRITICAL("vpiImageCreateNvBufferWrapper");
+  // denoise
+  if (0 != vpiCreateTemporalNoiseReduction(VPI_BACKEND_CUDA, camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_TNR_DEFAULT, &depth_tnr_))
+    SPDLOG_CRITICAL("vpiCreateTemporalNoiseReduction");
+
   // encode_yuv_buffer_
   input_params.width = camera_width;
   input_params.height = camera_height;
@@ -175,14 +186,14 @@ int Camera::Open() {
   // NvBufferTransformParams, FILTER & CROP
   memset(&depth_right_trans_, 0, sizeof(NvBufferTransformParams));
   depth_right_trans_.transform_flag = NVBUFFER_TRANSFORM_CROP_SRC | NVBUFFER_TRANSFORM_FILTER;
-  depth_right_trans_.transform_filter = NvBufferTransform_Filter_Smart;
+  depth_right_trans_.transform_filter = NvBufferTransform_Filter_Nicest;
   depth_right_trans_.src_rect.top = 0;
   depth_right_trans_.src_rect.left = camera_width;
   depth_right_trans_.src_rect.width = camera_width;
   depth_right_trans_.src_rect.height = camera_height;
   memset(&depth_left_trans_, 0, sizeof(NvBufferTransformParams));
   depth_left_trans_.transform_flag = NVBUFFER_TRANSFORM_CROP_SRC | NVBUFFER_TRANSFORM_FILTER;
-  depth_left_trans_.transform_filter = NvBufferTransform_Filter_Smart;
+  depth_left_trans_.transform_filter = NvBufferTransform_Filter_Nicest;
   depth_left_trans_.src_rect.top = 0;
   depth_left_trans_.src_rect.left = 0;
   depth_left_trans_.src_rect.width = camera_width;
@@ -215,9 +226,8 @@ int Camera::Open() {
   Capture();        // skip the first frame
   Capture();
   Encode();
-  Depth();
   Detect();
-  PostDepth();
+  Depth();
   // test threads
   RunParallel();
   return 0;
@@ -225,13 +235,10 @@ int Camera::Open() {
 
 int Camera::RunParallel() {
   Capture();
-  std::thread depth_thread(&Camera::Depth, this);
-  std::thread detect_thread(&Camera::Detect, this);
   std::thread encode_thread(&Camera::Encode, this);
+  Detect();
+  Depth();
   encode_thread.join();
-  detect_thread.join();
-  depth_thread.join();
-  PostDepth();
 }
 
 int Camera::Capture() {
@@ -313,73 +320,29 @@ int Camera::Depth() {
     SPDLOG_CRITICAL("Failed to convert the buffer");
   // cudaDeviceSynchronize();
 
-  SPDLOG_TRACE("Convert");  // RGBA -> Y16
-  if (0 != vpiSubmitConvertImageFormat(depth_stream_, VPI_BACKEND_CUDA, depth_left_img_, depth_left_Y16_img_, &depth_convParams_))
+  SPDLOG_TRACE("Convert"); // RGBA -> NV12_ER
+  if (0 != vpiSubmitConvertImageFormat(depth_stream_, VPI_BACKEND_CUDA, depth_left_img_, depth_left_ER_img_, &depth_convParams_))
     SPDLOG_CRITICAL("vpiSubmitConvertImageFormat");
-  if (0 != vpiSubmitConvertImageFormat(depth_stream_, VPI_BACKEND_CUDA, depth_right_img_, depth_right_Y16_img_, &depth_convParams_))
+  if (0 != vpiSubmitConvertImageFormat(depth_stream_, VPI_BACKEND_CUDA, depth_right_img_, depth_right_ER_img_, &depth_convParams_))
     SPDLOG_CRITICAL("vpiSubmitConvertImageFormat");
 
+  SPDLOG_TRACE("DeNoise");
+  VPITNRParams params;
+  vpiInitTemporalNoiseReductionParams(&params);
+  params.strength = 0.4;
+  if (0 != vpiSubmitTemporalNoiseReduction(depth_stream_, VPI_BACKEND_CUDA, depth_tnr_, NULL, depth_left_ER_img_, depth_left_nr_img_, &params))
+    SPDLOG_CRITICAL("vpiSubmitTemporalNoiseReduction");
+  if (0 != vpiSubmitTemporalNoiseReduction(depth_stream_, VPI_BACKEND_CUDA, depth_tnr_, depth_left_nr_img_, depth_right_ER_img_, depth_right_nr_img_, &params))
+    SPDLOG_CRITICAL("vpiSubmitTemporalNoiseReduction");
+
   SPDLOG_TRACE("StereoDisparity");
-  if (0 != vpiSubmitStereoDisparityEstimator(depth_stream_, VPI_BACKEND_CUDA, depth_stereo_, depth_left_Y16_img_, depth_right_Y16_img_, depth_disparity_, depth_confidenceMap_, NULL))
+  if (0 != vpiSubmitStereoDisparityEstimator(depth_stream_, VPI_BACKEND_CUDA, depth_stereo_, depth_left_nr_img_, depth_right_nr_img_, depth_disparity_, depth_confidenceMap_, NULL))
     SPDLOG_CRITICAL("vpiSubmitStereoDisparityEstimator");
   SPDLOG_TRACE("vpiStreamSync");
   if (0 != vpiStreamSync(depth_stream_))
     SPDLOG_CRITICAL("vpiStreamSync");
 
-  // uint16_t tmp[2560/2/2][720/2];
-  //   uint16_t tmp2[2560/2/2][720/2];
-  // cudaMemcpy(tmp, depth_disparity_data_, 2560/2/2 * 720/2 * 2, cudaMemcpyDeviceToHost);
-  // cudaMemcpy(tmp2, depth_confidenceMap_data_, 2560/2/2 * 720/2 * 2, cudaMemcpyDeviceToHost);
-
-  SPDLOG_TRACE("End");
-  return 0;
-}
-
-int Camera::Detect() {
-  SPDLOG_TRACE("Strat");
-
-  SPDLOG_TRACE("NvBufferTransform");  // YUV422 & stereo -> rgb & right
-  if (0 != NvBufferTransform(capture_yuv_fd_, detect_rbg_fd_, &depth_left_trans_))
-    SPDLOG_CRITICAL("Failed to convert the buffer");
-
-  // uchar4* pdata;
-  // NvBufferMemMap(detect_rbg_fd_, 0, NvBufferMem_Read, (void**)&pdata);
-  // NvBufferMemSyncForCpu(detect_rbg_fd_, 0, (void**)&pdata);
-  // NvBufferMemUnMap(detect_rbg_fd_, 0, (void**)&pdata);
-
-  SPDLOG_TRACE("Read Fd");
-  EGLImageKHR egl_image = NvEGLImageFromFd(NULL, detect_rbg_fd_);
-  if (egl_image == NULL)
-    SPDLOG_CRITICAL("NvEGLImageFromFd");
-  cudaEglFrame eglFrame;
-  cudaGraphicsResource* eglResource = NULL;
-  // cudaFree(0);
-  if (CUDA_FAILED(cudaGraphicsEGLRegisterImage(&eglResource, egl_image,
-                                               CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE)))
-    SPDLOG_CRITICAL("cudaGraphicsEGLRegisterImage");
-  if (CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource, 0, 0)))
-    SPDLOG_CRITICAL("cuGraphicsResourceGetMappedEglFrame");
-
-  if (eglFrame.frameType != cudaEglFrameTypePitch)
-    SPDLOG_CRITICAL("{} != cudaEglFrameTypePitch", eglFrame.frameType);
-
-  SPDLOG_TRACE("Model");
-  model_.Process((void*)eglFrame.frame.pArray[0]);
-  // uchar4 tmp[2560/2][720];
-  // cudaMemcpy(tmp, eglFrame.frame.pArray[0],2560/2 * 720 * 4, cudaMemcpyDeviceToHost);
-
-  // SPDLOG_TRACE("Synchronize");
-  // cudaDeviceSynchronize();
-  SPDLOG_TRACE("cleanup");
-  if (CUDA_FAILED(cudaGraphicsUnregisterResource(eglResource)))
-    SPDLOG_CRITICAL("cudaGraphicsUnregisterResource");
-  NvDestroyEGLImage(NULL, egl_image);
-  SPDLOG_TRACE("End");
-  return 0;
-}
-
-int Camera::PostDepth() {
-  SPDLOG_TRACE("Strat");
+  SPDLOG_TRACE("weighted disparity");
   const int box_index = model_.buffer_index;
   model_.depth[box_index].clear();
   for (int i : model_.indices[box_index]) {
@@ -400,7 +363,67 @@ int Camera::PostDepth() {
     depth = sum / weight;
     model_.depth[box_index].emplace_back(depth);
   }
+
+  // uint16_t tmp[2560/2/2][720/2];
+  //   uint16_t tmp2[2560/2/2][720/2];
+  // cudaMemcpy(tmp, depth_disparity_data_, 2560/2/2 * 720/2 * 2, cudaMemcpyDeviceToHost);
+  // cudaMemcpy(tmp2, depth_confidenceMap_data_, 2560/2/2 * 720/2 * 2, cudaMemcpyDeviceToHost);
+  // cv::Mat cvDisparityColor;
+  // cv::Mat cvmat1(360, 640, CV_16UC1, depth_confidenceMap_data_);
+  // cv::imwrite("confidence.bmp", cvmat1);
+  // cv::Mat cvDisparity(360, 640, CV_16UC1, depth_disparity_data_);
+  // cvDisparity.convertTo(cvDisparity, CV_8UC1, 255.0 / (32 * 64), 0);
+  // applyColorMap(cvDisparity, cvDisparityColor, cv::COLORMAP_JET);
+  // cv::imwrite("disparity.bmp", cvDisparityColor);
+
   SPDLOG_TRACE("End");
+  return 0;
+}
+
+int Camera::Detect() {
+  SPDLOG_TRACE("Strat");
+
+  SPDLOG_TRACE("NvBufferTransform");  // YUV422 & stereo -> rgb & right
+  if (0 != NvBufferTransform(capture_yuv_fd_, detect_rbg_fd_, &depth_left_trans_))
+    SPDLOG_CRITICAL("Failed to convert the buffer");
+
+  SPDLOG_TRACE("Read Fd");
+  EGLImageKHR egl_image = NvEGLImageFromFd(NULL, detect_rbg_fd_);
+  if (egl_image == NULL)
+    SPDLOG_CRITICAL("NvEGLImageFromFd");
+  cudaEglFrame eglFrame;
+  cudaGraphicsResource* eglResource = NULL;
+  // cudaFree(0);
+  if (CUDA_FAILED(cudaGraphicsEGLRegisterImage(&eglResource, egl_image,
+                                               CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE)))
+    SPDLOG_CRITICAL("cudaGraphicsEGLRegisterImage");
+  if (CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource, 0, 0)))
+    SPDLOG_CRITICAL("cuGraphicsResourceGetMappedEglFrame");
+
+  if (eglFrame.frameType != cudaEglFrameTypePitch)
+    SPDLOG_CRITICAL("{} != cudaEglFrameTypePitch", eglFrame.frameType);
+
+  SPDLOG_TRACE("Model");
+  model_.Process((void*)eglFrame.frame.pArray[0]);
+
+  // SPDLOG_TRACE("Synchronize");
+  // cudaDeviceSynchronize();
+
+  // uchar4* pdata;
+  // NvBufferMemMap(detect_rbg_fd_, 0, NvBufferMem_Read, (void**)&pdata);
+  // NvBufferMemSyncForCpu(detect_rbg_fd_, 0, (void**)&pdata);
+  // cv::Mat cvmat3(640, 640, CV_8UC4, pdata);
+  // cv::Mat rgb;
+  // cv::cvtColor(cvmat3, rgb, cv::COLOR_RGBA2BGR);
+  // cv::imwrite("frame.bmp", rgb);
+  // NvBufferMemUnMap(detect_rbg_fd_, 0, (void**)&pdata);
+
+  SPDLOG_TRACE("cleanup");
+  if (CUDA_FAILED(cudaGraphicsUnregisterResource(eglResource)))
+    SPDLOG_CRITICAL("cudaGraphicsUnregisterResource");
+  NvDestroyEGLImage(NULL, egl_image);
+  SPDLOG_TRACE("End");
+  return 0;
 }
 
 Camera::~Camera() {
@@ -425,11 +448,14 @@ Camera::~Camera() {
   vpiStreamDestroy(depth_stream_);
   vpiImageDestroy(depth_left_img_);
   vpiImageDestroy(depth_right_img_);
-  vpiImageDestroy(depth_left_Y16_img_);
-  vpiImageDestroy(depth_right_Y16_img_);
+  vpiImageDestroy(depth_left_nr_img_);
+  vpiImageDestroy(depth_right_nr_img_);
+  vpiImageDestroy(depth_left_ER_img_);
+  vpiImageDestroy(depth_right_ER_img_);  
   vpiImageDestroy(depth_confidenceMap_);
   vpiImageDestroy(depth_disparity_);
   vpiPayloadDestroy(depth_stereo_);
+  vpiPayloadDestroy(depth_tnr_);
   cudaFree(depth_disparity_data_);
   cudaFree(depth_confidenceMap_data_);
   delete jpegdec_;

@@ -51,10 +51,13 @@ class Camera {
   int depth_right_fd_;
   VPIImage depth_left_img_ = NULL;
   VPIImage depth_right_img_ = NULL;
-  VPIImage depth_left_Y16_img_ = NULL;
-  VPIImage depth_right_Y16_img_ = NULL;
+  VPIImage depth_left_ER_img_ = NULL;
+  VPIImage depth_right_ER_img_ = NULL;
+  VPIImage depth_left_nr_img_ = NULL;
+  VPIImage depth_right_nr_img_ = NULL;  
   VPIStream depth_stream_ = NULL;
   VPIPayload depth_stereo_ = NULL;
+  VPIPayload depth_tnr_ = NULL;
   void * depth_disparity_data_;
   void * depth_confidenceMap_data_; 
   VPIImage depth_disparity_ = NULL;
@@ -74,7 +77,6 @@ class Camera {
   int Detect();
   int Encode();
   int Depth();
-  int PostDepth();  
   int RunParallel();
   ~Camera();
 };
