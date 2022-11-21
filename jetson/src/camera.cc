@@ -23,8 +23,8 @@
 #include <vpi/CUDAInterop.h>
 #include <vpi/NvBufferInterop.h>
 #include <vpi/algo/StereoDisparity.h>
-#include <vpi/algo/TemporalNoiseReduction.h>
 
+#include <algorithm>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <thread>
@@ -39,6 +39,8 @@ Camera::Camera(YAML::Node& config, Model& model) : config_(config), model_(model
   encode_quality_ = config_["camera"]["quality"].as<unsigned int>();
   depth_factor_ = config_["detector"]["depth_factor"].as<unsigned int>();
   camera_width_ = config_["camera"]["width"].as<unsigned int>() / 2;
+  depth_k_ = config_["detector"]["depth_k"].as<float>();
+  depth_b_ = config_["detector"]["depth_b"].as<float>();
 }
 
 int Camera::Open() {
@@ -73,7 +75,7 @@ int Camera::Open() {
   if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_left_ER_img_))
     SPDLOG_CRITICAL("vpiImageCreate");
   if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_right_ER_img_))
-    SPDLOG_CRITICAL("vpiImageCreate");    
+    SPDLOG_CRITICAL("vpiImageCreate");
   if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_left_nr_img_))
     SPDLOG_CRITICAL("vpiImageCreate");
   if (0 != vpiImageCreate(camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_BACKEND_CUDA, &depth_right_nr_img_))
@@ -174,6 +176,8 @@ int Camera::Open() {
   // denoise
   if (0 != vpiCreateTemporalNoiseReduction(VPI_BACKEND_CUDA, camera_width / depth_factor, camera_height / depth_factor, VPI_IMAGE_FORMAT_NV12_ER, VPI_TNR_DEFAULT, &depth_tnr_))
     SPDLOG_CRITICAL("vpiCreateTemporalNoiseReduction");
+  vpiInitTemporalNoiseReductionParams(&depth_tnr_params_);
+  depth_tnr_params_.strength = 0.5;
 
   // encode_yuv_buffer_
   input_params.width = camera_width;
@@ -320,23 +324,22 @@ int Camera::Depth() {
     SPDLOG_CRITICAL("Failed to convert the buffer");
   // cudaDeviceSynchronize();
 
-  SPDLOG_TRACE("Convert"); // RGBA -> NV12_ER
+  SPDLOG_TRACE("Convert");  // RGBA -> NV12_ER
   if (0 != vpiSubmitConvertImageFormat(depth_stream_, VPI_BACKEND_CUDA, depth_left_img_, depth_left_ER_img_, &depth_convParams_))
     SPDLOG_CRITICAL("vpiSubmitConvertImageFormat");
   if (0 != vpiSubmitConvertImageFormat(depth_stream_, VPI_BACKEND_CUDA, depth_right_img_, depth_right_ER_img_, &depth_convParams_))
     SPDLOG_CRITICAL("vpiSubmitConvertImageFormat");
 
   SPDLOG_TRACE("DeNoise");
-  VPITNRParams params;
-  vpiInitTemporalNoiseReductionParams(&params);
-  params.strength = 0.4;
-  if (0 != vpiSubmitTemporalNoiseReduction(depth_stream_, VPI_BACKEND_CUDA, depth_tnr_, NULL, depth_left_ER_img_, depth_left_nr_img_, &params))
+  if (0 != vpiSubmitTemporalNoiseReduction(depth_stream_, VPI_BACKEND_CUDA, depth_tnr_, NULL, depth_left_ER_img_, depth_left_nr_img_, &depth_tnr_params_))
     SPDLOG_CRITICAL("vpiSubmitTemporalNoiseReduction");
-  if (0 != vpiSubmitTemporalNoiseReduction(depth_stream_, VPI_BACKEND_CUDA, depth_tnr_, depth_left_nr_img_, depth_right_ER_img_, depth_right_nr_img_, &params))
+  if (0 != vpiSubmitTemporalNoiseReduction(depth_stream_, VPI_BACKEND_CUDA, depth_tnr_, depth_left_nr_img_, depth_right_ER_img_, depth_right_nr_img_, &depth_tnr_params_))
     SPDLOG_CRITICAL("vpiSubmitTemporalNoiseReduction");
 
   SPDLOG_TRACE("StereoDisparity");
-  if (0 != vpiSubmitStereoDisparityEstimator(depth_stream_, VPI_BACKEND_CUDA, depth_stereo_, depth_left_nr_img_, depth_right_nr_img_, depth_disparity_, depth_confidenceMap_, NULL))
+  // if (0 != vpiSubmitStereoDisparityEstimator(depth_stream_, VPI_BACKEND_CUDA, depth_stereo_, depth_left_nr_img_, depth_right_nr_img_, depth_disparity_, depth_confidenceMap_, NULL))
+  //   SPDLOG_CRITICAL("vpiSubmitStereoDisparityEstimator");
+  if (0 != vpiSubmitStereoDisparityEstimator(depth_stream_, VPI_BACKEND_CUDA, depth_stereo_, depth_left_nr_img_, depth_right_nr_img_, depth_disparity_, NULL, NULL))
     SPDLOG_CRITICAL("vpiSubmitStereoDisparityEstimator");
   SPDLOG_TRACE("vpiStreamSync");
   if (0 != vpiStreamSync(depth_stream_))
@@ -352,15 +355,25 @@ int Camera::Depth() {
     const int y = model_.boxes[box_index][i].y / depth_factor_;
     const int width = model_.boxes[box_index][i].width / depth_factor_;
     const int height = model_.boxes[box_index][i].height / depth_factor_;
+    uint16_t depth_list[width * height] = {0};
     uint64_t sum = 0;
-    uint64_t weight = 0;
+    // uint64_t weight = 0;
+    size_t list_i = 0;
     for (size_t y_i = y; y_i < y + height; y_i++) {
       for (size_t x_i = x; x_i < x + width; x_i++) {
-        weight += ((uint16_t*)depth_confidenceMap_data_)[y_i * (camera_width_ / depth_factor_) + x_i] / 256;
-        sum += (((uint16_t*)depth_confidenceMap_data_)[y_i * (camera_width_ / depth_factor_) + x_i]) * (((uint16_t*)depth_disparity_data_)[y_i * (camera_width_ / depth_factor_) + x_i] / 256);
+        // weight += ((uint16_t*)depth_confidenceMap_data_)[y_i * (camera_width_ / depth_factor_) + x_i] / 256;
+        // sum += (((uint16_t*)depth_confidenceMap_data_)[y_i * (camera_width_ / depth_factor_) + x_i]) * (((uint16_t*)depth_disparity_data_)[y_i * (camera_width_ / depth_factor_) + x_i] / 256);
+        if (((uint16_t*)depth_disparity_data_)[y_i * (camera_width_ / depth_factor_) + x_i]) {
+          depth_list[list_i++] = ((uint16_t*)depth_disparity_data_)[y_i * (camera_width_ / depth_factor_) + x_i];
+        }
       }
     }
-    depth = sum / weight;
+    std::sort(depth_list, depth_list + list_i,std::greater<uint16_t>());
+    size_t l_i;
+    for (l_i = 0; l_i < list_i * 0.1 + 1; l_i++) {
+      sum += depth_list[l_i];
+    }
+    depth = depth_k_ / (sum / l_i) + depth_b_;
     model_.depth[box_index].emplace_back(depth);
   }
 
@@ -451,7 +464,7 @@ Camera::~Camera() {
   vpiImageDestroy(depth_left_nr_img_);
   vpiImageDestroy(depth_right_nr_img_);
   vpiImageDestroy(depth_left_ER_img_);
-  vpiImageDestroy(depth_right_ER_img_);  
+  vpiImageDestroy(depth_right_ER_img_);
   vpiImageDestroy(depth_confidenceMap_);
   vpiImageDestroy(depth_disparity_);
   vpiPayloadDestroy(depth_stereo_);

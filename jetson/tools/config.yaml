@@ -11,6 +11,8 @@ detector:
   iou_threshold: 0.45
   size: 640
   depth_factor: 2
+  depth_k: 200000
+  depth_b: -90
 server:
   address: 0.0.0.0:9090
   key_path: ./tools/cert/localhost.key

@@ -9,6 +9,7 @@
 #include <vpi/Status.h>
 #include <vpi/Stream.h>
 #include <vpi/algo/ConvertImageFormat.h>
+#include <vpi/algo/TemporalNoiseReduction.h>
 #include <yaml-cpp/yaml.h>
 
 namespace jetson {
@@ -43,6 +44,8 @@ class Camera {
   int encode_jpeg_max_size_;
   int encode_quality_;
   // Depth
+  float depth_k_;
+  float depth_b_;  
   int depth_factor_;
   int camera_width_;
   NvBufferTransformParams depth_left_trans_;
@@ -63,7 +66,7 @@ class Camera {
   VPIImage depth_disparity_ = NULL;
   VPIImage depth_confidenceMap_ = NULL;
   VPIConvertImageFormatParams depth_convParams_;
-
+  VPITNRParams depth_tnr_params_;
  public:
   static const int mjpeg_num = 2;
   nv_buffer encode_jpeg_list[mjpeg_num];
