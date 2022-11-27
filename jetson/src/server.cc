@@ -9,7 +9,8 @@
 #include <string>
 
 #include "camera.h"
-#include "model.h"
+#include "depth.h"
+#include "detector.h"
 #undef Status
 // #include <grpcpp/ext/proto_server_reflection_plugin.h>
 // #include <grpcpp/health_check_service_interface.h>
@@ -83,7 +84,7 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
 };
 }  // namespace
 
-DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, Model &model, std::mutex &cv_m, std::condition_variable &cv) : config_(config), camera_(camera), model_(model), cv_m_(cv_m), cv_(cv) {
+DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, Detector &detector, Depth &depth, std::mutex &cv_m, std::condition_variable &cv) : config_(config), camera_(camera), detector_(detector), depth_(depth), cv_m_(cv_m), cv_(cv) {
   std::string server_key_path = config_["server"]["key_path"].as<std::string>();
   std::string server_cert_path = config_["server"]["cert_path"].as<std::string>();
   if (!std::experimental::filesystem::exists(server_key_path)) {
@@ -137,30 +138,34 @@ Status DroneServiceImpl::SayHello([[maybe_unused]] ServerContext *context, const
   return Status::OK;
 }
 
-Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] const Empty *request, ServerWriter<CameraReply> *writer) {
+Status DroneServiceImpl::GetCamera(ServerContext *context, const CameraRequest *request, ServerWriter<CameraReply> *writer) {
   SPDLOG_INFO("GetCamera");
   CameraReply reply;
+  bool is_image = request->image();
   while (!context->IsCancelled()) {
     // Read Image
     SPDLOG_TRACE("condition_variable");
     std::unique_lock lk(cv_m_);
     cv_.wait(lk, [this] { return ready; });
     SPDLOG_DEBUG("Strat");
-    SPDLOG_TRACE("set image");
-    reply.set_image(camera_.encode_jpeg_list[jpeg_index].start, camera_.encode_jpeg_list[jpeg_index].size);
+    if (is_image) {
+      SPDLOG_TRACE("set image");
+      reply.set_image(camera_.encode_jpeg_list[jpeg_index].start, camera_.encode_jpeg_list[jpeg_index].size);
+      reply.set_depth(depth_.map_u8[depth_index]->data, depth_.depth_map_size);
+    }
     // Bounding Box
     SPDLOG_TRACE("add box");
     reply.clear_box();
     int count = 0;
-    for (int i : model_.indices[box_index]) {
+    for (int i : detector_.indices[box_index]) {
       CameraReply_BoundingBox *box = reply.add_box();
-      box->set_left(model_.boxes[box_index][i].x);
-      box->set_top(model_.boxes[box_index][i].y);
-      box->set_width(model_.boxes[box_index][i].width);
-      box->set_height(model_.boxes[box_index][i].height);
-      box->set_confidence(model_.confs[box_index][i]);
-      box->set_class_(model_.class_id[box_index][i]);
-      box->set_depth(model_.depth[box_index][count++]);
+      box->set_left(detector_.boxes[box_index][i].x);
+      box->set_top(detector_.boxes[box_index][i].y);
+      box->set_width(detector_.boxes[box_index][i].width);
+      box->set_height(detector_.boxes[box_index][i].height);
+      box->set_confidence(detector_.confs[box_index][i]);
+      box->set_class_(detector_.class_id[box_index][i]);
+      box->set_depth(detector_.depth[box_index][count++]);
     }
     SPDLOG_TRACE("send reply");
     writer->Write(reply);
@@ -172,7 +177,7 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, [[maybe_unused]] cons
 
 Status DroneServiceImpl::GetImageSize([[maybe_unused]] ServerContext *context, [[maybe_unused]] const Empty *request, ImageSize *reply) {
   SPDLOG_INFO("GetImageSize");
-  reply->set_width(config_["camera"]["width"].as<unsigned int>() / 2);
+  reply->set_width(config_["camera"]["width"].as<unsigned int>());
   reply->set_height(config_["camera"]["height"].as<unsigned int>());
   return Status::OK;
 }

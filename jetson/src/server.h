@@ -12,6 +12,7 @@
 
 #include "drone.grpc.pb.h"
 
+using autodrone::CameraRequest;
 using autodrone::CameraReply;
 using autodrone::Drone;
 using autodrone::Empty;
@@ -27,13 +28,15 @@ using grpc::Status;
 namespace jetson {
 
 class Camera;
-class Model;
+class Detector;
+class Depth;
 
 class DroneServiceImpl final : public Drone::Service {
  private:
   YAML::Node &config_;
   Camera &camera_;
-  Model &model_;
+  Detector &detector_;
+  Depth &depth_;
   std::unique_ptr<Server> server_;
   std::unique_ptr<AuthMetadataProcessor> processor_;
   std::string password_hashed_;
@@ -44,12 +47,13 @@ class DroneServiceImpl final : public Drone::Service {
   bool ready = false;
   unsigned int jpeg_index = 0;
   unsigned int box_index = 0;
+  unsigned int depth_index = 0;
 
  public:
-  DroneServiceImpl(YAML::Node &config, Camera &camera, Model &model, std::mutex &cv_m, std::condition_variable &cv);
+  DroneServiceImpl(YAML::Node &config, Camera &camera, Detector &detector, Depth &depth, std::mutex &cv_m, std::condition_variable &cv);
   ~DroneServiceImpl();
   Status SayHello(ServerContext *context, const HelloRequest *request, HelloReply *reply) override;
-  Status GetCamera(ServerContext *context, const Empty *request, ServerWriter<CameraReply> *writer) override;
+  Status GetCamera(ServerContext *context, const CameraRequest *request, ServerWriter<CameraReply> *writer) override;
   Status GetImageSize(ServerContext *context, const Empty *request, ImageSize *reply) override;
   void Run();
   void Wait();

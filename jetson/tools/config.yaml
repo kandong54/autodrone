@@ -1,8 +1,8 @@
 camera:
   device: /dev/video0
-  width: 2560
+  width: 1280
   height: 720
-  quality: 10
+  fps: 10
 detector:
   model_path: ./tools/yolov5n_flower.fp16.engine
   input_layer: images
@@ -10,9 +10,14 @@ detector:
   confidence_threshold: 0.6
   iou_threshold: 0.45
   size: 640
-  depth_factor: 2
-  depth_k: 200000
-  depth_b: -90
+depth:
+  model_path: ./tools/midas_v21_small.engine
+  input_layer: 0
+  output_layer: 797
+  size: 256
+  depth_k: 1
+  depth_b: 0
+  quality: 80
 server:
   address: 0.0.0.0:9090
   key_path: ./tools/cert/localhost.key
