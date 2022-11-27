@@ -1,13 +1,15 @@
-#ifndef AUTODRONE_JETSON_MODEL
-#define AUTODRONE_JETSON_MODEL
+#ifndef AUTODRONE_JETSON_DETECTOR
+#define AUTODRONE_JETSON_DETECTOR
 
 #include <jetson-inference/tensorNet.h>
 #include <yaml-cpp/yaml.h>
+#include <cuda_egl_interop.h>
+
 #include <opencv2/core.hpp>
 
 namespace jetson {
 
-class Model : public tensorNet {
+class Detector : public tensorNet {
  private:
   YAML::Node &config_;
   int model_size_;
@@ -15,6 +17,9 @@ class Model : public tensorNet {
   int camera_height_;
   float conf_threshold_;
   float iou_threshold_;
+  int rgb_fd_;
+  EGLImageKHR egl_image_;
+  cudaGraphicsResource* eglResource_;
 
  public:
   static const int buffer_num = 2;
@@ -26,24 +31,23 @@ class Model : public tensorNet {
   std::vector<float> depth[buffer_num];
 
  public:
-  Model(YAML::Node &config);
+  Detector(YAML::Node &config, int input_fd);
   int Init();
-  void Process(void* input);
+  void Process();
   void PostProcess();
-  ~Model();
+  ~Detector();
 };
 
-  // [Cx, Cy, width , height, confidence, class]
-  enum OutputArray
-  {
-    kXCenter = 0,
-    kYCenter = 1,
-    kWidth = 2,
-    kHeight = 3,
-    kConfidence = 4,
-    kClass = 5,
-    kArrayLen = 6,
-  };
+// [Cx, Cy, width , height, confidence, class]
+enum OutputArray {
+  kXCenter = 0,
+  kYCenter = 1,
+  kWidth = 2,
+  kHeight = 3,
+  kConfidence = 4,
+  kClass = 5,
+  kArrayLen = 6,
+};
 
 }  // namespace jetson
-#endif  // AUTODRONE_JETSON_MODEL
+#endif  // AUTODRONE_JETSON_DETECTOR

@@ -1,5 +1,6 @@
 #include <camera.h>
-#include <model.h>
+#include <depth.h>
+#include <detector.h>
 #include <server.h>
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
@@ -29,21 +30,22 @@ int main(int argc, char* argv[]) {
   YAML::Node config = YAML::LoadFile(config_path);
 
   /*
-   * GPU
-   */
-  cudaDeviceReset();
-
-  /*
-   * TensorRT
-   */
-  jetson::Model model(config);
-  model.Init();
-
-  /*
    * camera
    */
-  jetson::Camera camera(config, model);
+  jetson::Camera camera(config);
   camera.Open();
+
+  /*
+   * detector
+   */
+  jetson::Detector detector(config, camera.detector_fd);
+  detector.Init();
+
+  /*
+   * depth
+   */
+  jetson::Depth depth(config, camera.depth_fd, &detector);
+  depth.Init();
 
   /*
    * Concurrency
@@ -54,7 +56,7 @@ int main(int argc, char* argv[]) {
   /*
    * gRPC
    */
-  jetson::DroneServiceImpl server(config, camera, model, cv_m_, cv);
+  jetson::DroneServiceImpl server(config, camera, detector, depth, cv_m_, cv);
   server.Run();
   // server.Wait();
 
@@ -64,17 +66,19 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     SPDLOG_TRACE("*** Strat ***");
-    camera.RunParallel();
-    // camera.Capture();
+    camera.Capture();
     // camera.Encode();
-    // camera.Depth();
-    // camera.Detect();
+    detector.Process();
+    depth.Process();
+    detector.PostProcess();
+    depth.PostProcess();
     SPDLOG_TRACE("notify_all");
     {
       std::lock_guard lk(cv_m_);
       server.ready = true;
       server.jpeg_index = camera.encode_index;
-      server.box_index = model.buffer_index;
+      server.box_index = detector.buffer_index;
+            server.depth_index = depth.buffer_index;
     }
     cv.notify_all();
     SPDLOG_TRACE("*** End ***");

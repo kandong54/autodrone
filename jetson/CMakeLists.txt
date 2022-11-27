@@ -23,12 +23,13 @@ add_executable(${CMAKE_PROJECT_NAME}
   src/main.cc
   src/server.cc
   src/camera.cc
-  src/model.cc
+  src/detector.cc
+  src/depth.cc  
 )
 
 # spdlog
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_INFO
+  SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
 )
 
 target_include_directories(drone PRIVATE

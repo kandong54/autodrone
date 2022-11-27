@@ -1,21 +1,24 @@
-#include "model.h"
+#include "detector.h"
 
 #include <jetson-inference/tensorConvert.h>
 #include <jetson-utils/imageIO.h>
+#include <nvbuf_utils.h>
 #include <spdlog/spdlog.h>
 
 #include <opencv2/dnn/dnn.hpp>
+
 namespace jetson {
 
-Model::Model(YAML::Node& config) : config_(config) {
-  camera_width_ = config_["camera"]["width"].as<int>() / 2;
+Detector::Detector(YAML::Node& config, int input_fd) : tensorNet(), config_(config), rgb_fd_(input_fd) {
+  camera_width_ = config_["camera"]["width"].as<int>();
   camera_height_ = config_["camera"]["height"].as<int>();
   model_size_ = config_["detector"]["size"].as<int>();
   conf_threshold_ = config_["detector"]["confidence_threshold"].as<float>();
   iou_threshold_ = config_["detector"]["iou_threshold"].as<float>();
 }
 
-int Model::Init() {
+int Detector::Init() {
+  CreateStream();
   std::vector<std::string> input_blobs = {config_["detector"]["input_layer"].as<std::string>()};
   std::vector<std::string> output_blobs = {config_["detector"]["output_layer"].as<std::string>()};
   if (!LoadEngine(config_["detector"]["model_path"].as<std::string>().c_str(), input_blobs, output_blobs)) {
@@ -23,28 +26,56 @@ int Model::Init() {
   }
 }
 
-void Model::Process(void* input) {
+void Detector::Process() {
   SPDLOG_TRACE("Strat");
   // preProcess
+  SPDLOG_TRACE("Read Fd");
+  egl_image_ = NvEGLImageFromFd(NULL, rgb_fd_);
+  if (egl_image_ == NULL)
+    SPDLOG_CRITICAL("NvEGLImageFromFd");
+  cudaEglFrame eglFrame;
+  eglResource_ = NULL;
+  // cudaFree(0);
+  if (CUDA_FAILED(cudaGraphicsEGLRegisterImage(&eglResource_, egl_image_,
+                                               CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE)))
+    SPDLOG_CRITICAL("cudaGraphicsEGLRegisterImage");
+  if (CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource_, 0, 0)))
+    SPDLOG_CRITICAL("cuGraphicsResourceGetMappedEglFrame");
+
+  if (eglFrame.frameType != cudaEglFrameTypePitch)
+    SPDLOG_CRITICAL("{} != cudaEglFrameTypePitch", eglFrame.frameType);
+
+  //   uchar3 pdata[640][640];
+  //  cudaMemcpy(pdata, rgb_data_, 640*640*3, cudaMemcpyDeviceToHost);
+  //   cv::Mat cvmat3(640, 640, CV_8UC3, pdata);
+  //   cv::Mat rgb;
+  //   cv::cvtColor(cvmat3, rgb, cv::COLOR_RGBA2BGR);
+  //   cv::imwrite("frame.bmp", rgb);
+
   // https://github.com/dusty-nv/jetson-inference/blob/master/c/detectNet.cpp
   // https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tao/models/peoplenet
-  if (cudaTensorNormRGB(input, IMAGE_RGBA8, model_size_, model_size_,
+  if (cudaTensorNormRGB((void*)eglFrame.frame.pArray[0], IMAGE_RGBA8, model_size_, model_size_,
                         mInputs[0].CUDA, model_size_, model_size_,
                         make_float2(0.0f, 1.0f),
                         GetStream()))
     SPDLOG_CRITICAL("cudaTensorNormRGB");
 
   SPDLOG_TRACE("ProcessNetwork");
-  if (!ProcessNetwork(true))
+  if (!ProcessNetwork(false))
     SPDLOG_CRITICAL("Failed to ProcessNetwork");
-
-  SPDLOG_TRACE("PostProcess");
-  PostProcess();
 
   SPDLOG_TRACE("End");
 }
 
-void Model::PostProcess() {
+void Detector::PostProcess() {
+  SPDLOG_TRACE("cudaStreamSynchronize");
+  cudaStreamSynchronize(GetStream());
+
+  SPDLOG_TRACE("cleanup");
+  if (CUDA_FAILED(cudaGraphicsUnregisterResource(eglResource_)))
+    SPDLOG_CRITICAL("cudaGraphicsUnregisterResource");
+  NvDestroyEGLImage(NULL, egl_image_);
+
   // https://github.com/itsnine/yolov5-onnxruntime/blob/master/src/detector.cpp
   SPDLOG_TRACE("Loop");
   buffer_index = 1 - buffer_index;
@@ -60,7 +91,7 @@ void Model::PostProcess() {
       int center_x = output_ptr[i + kXCenter] / model_size_ * camera_width_;
       int center_y = output_ptr[i + kYCenter] / model_size_ * camera_height_;
       int width = output_ptr[i + kWidth] / model_size_ * camera_width_;
-      int height =output_ptr[i + kHeight] / model_size_ * camera_height_;
+      int height = output_ptr[i + kHeight] / model_size_ * camera_height_;
       int left = center_x - width / 2;
       int top = center_y - height / 2;
       boxes[buffer_index].emplace_back(left, top, width, height);
@@ -75,7 +106,7 @@ void Model::PostProcess() {
   SPDLOG_TRACE("End");
 }
 
-Model::~Model() {
+Detector::~Detector() {
 }
 
 }  // namespace jetson
