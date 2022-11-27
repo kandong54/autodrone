@@ -99,24 +99,26 @@ void Depth::PostProcess() {
   for (int i : detector_->indices[box_index]) {
     // TODO: CUDA
     float depth = 0;
-    const int x = detector_->boxes[box_index][i].x * model_size_ / detector_size_;
-    const int y = detector_->boxes[box_index][i].y * model_size_ / detector_size_;
-    const int width = detector_->boxes[box_index][i].width * model_size_ / detector_size_;
-    const int height = detector_->boxes[box_index][i].height * model_size_ / detector_size_;
-    float depth_list[width * height] = {0};
-    float sum = 0;
-    size_t list_i = 0;
-    for (size_t y_i = y; y_i < y + height; y_i++) {
-      for (size_t x_i = x; x_i < x + width; x_i++) {
-        depth_list[list_i++] = ((float*)mOutputs[0].CPU)[y_i * model_size_ + x_i];
-      }
-    }
-    std::sort(depth_list, depth_list + list_i, std::greater<uint16_t>());
-    size_t l_i;
-    for (l_i = 0; l_i < list_i * 0.5 + 1; l_i++) {
-      sum += depth_list[l_i];
-    }
-    depth = depth_k_ * (sum / l_i) + depth_b_;
+    const int x = detector_->boxes[box_index][i].x * model_size_ / camera_width_;
+    const int y = detector_->boxes[box_index][i].y * model_size_ / camera_height_;
+    const int width = detector_->boxes[box_index][i].width * model_size_ / camera_width_;
+    const int height = detector_->boxes[box_index][i].height * model_size_ / camera_height_;
+    cv::cuda::GpuMat box(*map_f32_, cv::Rect(x, y, width, height));
+    // float depth_list[width * height] = {0};
+    // float sum = 0;
+    // size_t list_i = 0;
+    // for (size_t y_i = y; y_i < y + height; y_i++) {
+    //   for (size_t x_i = x; x_i < x + width; x_i++) {
+    //     depth_list[list_i++] = ((float*)mOutputs[0].CPU)[y_i * model_size_ + x_i];
+    //   }
+    // }
+    // std::sort(depth_list, depth_list + list_i, std::greater<uint16_t>());
+    // size_t l_i;
+    // for (l_i = 0; l_i < list_i * 0.5 + 1; l_i++) {
+    //   sum += depth_list[l_i];
+    // }
+    depth = cv::cuda::sum(box)[0] / (width * height);
+    depth = depth_k_ * depth + depth_b_;
     detector_->depth[box_index].emplace_back(depth);
   }
   SPDLOG_TRACE("End");
