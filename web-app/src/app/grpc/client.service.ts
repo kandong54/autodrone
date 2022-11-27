@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { DroneClient } from '../../protos/DroneServiceClientPb';
-import { HelloRequest, CameraReply, Empty } from '../../protos/drone_pb';
+import { HelloRequest, CameraReply, Empty, CameraRequest } from '../../protos/drone_pb';
 import { ClientReadableStream } from 'grpc-web';
 
 export { ClientService, Server };
@@ -83,7 +83,9 @@ class ClientService {
     if (this.client === null) {
       return null;
     }
-    return this.client.getCamera(new Empty());
+    let request = new CameraRequest();
+    request.setImage(true);
+    return this.client.getCamera(request);
   }
 
   async getImageSize(): Promise<number[] | null> {

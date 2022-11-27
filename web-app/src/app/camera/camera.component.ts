@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { ClientService } from '../grpc/client.service';
 import { CameraReply } from '../../protos/drone_pb';
 import { ClientReadableStream } from 'grpc-web';
+import colormap from 'colormap';
 
 @Component({
   selector: 'app-camera',
@@ -13,10 +14,18 @@ export class CameraComponent implements OnInit, AfterViewInit {
 
   imageWidth: number = 0;
   imageHeight: number = 0;
+  depthSize: number = 0;
+  depthFactor: number = 0.2;
   imageStream: ClientReadableStream<CameraReply> | null = null;
   interval: number;
   lastTime: number = 0;
   context2D: CanvasRenderingContext2D | null = null;
+  colors = colormap({
+    colormap: 'jet',
+    nshades: 256,
+    format: 'rgba',
+    alpha: 255
+  });
 
   @ViewChild('myCanvas')
   private myCanvas: ElementRef = {} as ElementRef;
@@ -49,19 +58,35 @@ export class CameraComponent implements OnInit, AfterViewInit {
     // fps
     this.updateFps();
     // read
-    let imageRGB = response.getImage_asU8();
+    let imageJpeg = response.getImage_asU8();
+    let depthU8 = response.getDepth_asU8();
     let boxes = response.getBoxList();
     let image = new Image();
     // TODO: offscreen render
+    // depth
+    if (!(this.depthSize)) {
+      this.depthSize = Math.sqrt(depthU8.length);
+    }
     // jpg
-    let blob = new Blob([imageRGB], { 'type': 'image/jpeg' });
+    let blob = new Blob([imageJpeg], { 'type': 'image/jpeg' });
     image.src = URL.createObjectURL(blob);
     image.onload = () => {
       if (this.context2D === null) {
         return;
       }
+      let imageDepth = this.context2D.createImageData(this.depthSize, this.depthSize);
+      for (let y = 0; y < this.depthSize; y++) {
+        for (let x = 0; x < this.depthSize; x++) {
+          imageDepth.data[(y * this.depthSize + x) * 4] = this.colors[depthU8[y * this.depthSize + x]][0];
+          imageDepth.data[(y * this.depthSize + x) * 4 + 1] = this.colors[depthU8[y * this.depthSize + x]][1];
+          imageDepth.data[(y * this.depthSize + x) * 4 + 2] = this.colors[depthU8[y * this.depthSize + x]][2];
+          imageDepth.data[(y * this.depthSize + x) * 4 + 3] = 255;
+        }
+      }
+      this.context2D.clearRect(0, 0, this.context2D.canvas.width, this.context2D.canvas.height);
       this.context2D.drawImage(image, 0, 0, this.imageWidth, this.imageHeight, 0, 0, this.context2D.canvas.width, this.context2D.canvas.height);
       this.context2D.fillText('FPS: ' + (1000 / this.interval).toFixed(2), 10, 50);
+      this.context2D.lineWidth = 3;
       for (const box of boxes) {
         let x = box.getLeft();
         let y = box.getTop();
@@ -72,6 +97,22 @@ export class CameraComponent implements OnInit, AfterViewInit {
         let depth = box.getDepth();
         this.context2D.fillText(Math.round(confidence * 100) + '% ' + Math.round(depth) + 'cm', x + 5, y + height - 6);
       }
+      createImageBitmap(imageDepth).then((bitmap) => {
+        if (this.context2D === null) {
+          return;
+        }
+        this.context2D.drawImage(bitmap, 0, 0, this.depthSize, this.depthSize,
+          this.context2D.canvas.width * (1 - this.depthFactor), this.context2D.canvas.height * (1 - this.depthFactor),
+          this.context2D.canvas.width * this.depthFactor, this.context2D.canvas.height * this.depthFactor);
+        this.context2D.lineWidth = 1;
+        for (const box of boxes) {
+          let x = box.getLeft() * this.depthFactor + this.imageWidth * (1 - this.depthFactor);
+          let y = box.getTop() * this.depthFactor + this.imageHeight * (1 - this.depthFactor);
+          let width = box.getWidth() * this.depthFactor;
+          let height = box.getHeight() * this.depthFactor;
+          this.context2D.strokeRect(x, y, width, height);
+        }
+      })
       URL.revokeObjectURL(image.src);
     }
   }
@@ -96,7 +137,7 @@ export class CameraComponent implements OnInit, AfterViewInit {
     if (imageSize === null) {
       throw new Error("Failed to get image size!");
     }
-    [this.imageWidth, this.imageHeight] = imageSize;
+    [this.imageWidth, this.imageHeight, this.depthSize] = imageSize;
     this.myCanvas.nativeElement.width = this.imageWidth;
     this.myCanvas.nativeElement.height = this.imageHeight;
     this.resizeCanvas(this.myCanvas.nativeElement, this.imageWidth / this.imageHeight);
