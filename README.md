@@ -11,3 +11,6 @@ Hello, World!
 [README](web-app/) 
 
 Quick link: [Demo](https://io.kand.dev/drone)
+
+## Dataflow
+![Dataflow](./img/Dataflow.svg)
