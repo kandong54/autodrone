@@ -1,4 +1,4 @@
-# [Deprecated] Drone App
+# (Deprecated) Drone App
 The drone app is a C++ program on Raspberry Pi 4 Model B.  It is used to control the drone and serve data to the UI.
 
 Up to now, it can 

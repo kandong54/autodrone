@@ -1,25 +1,26 @@
 # Drone App
-The drone app is a C++ program on [Jetson Nano](https://developer.nvidia.com/embedded/jetson-nano-developer-kit). It is used to control the drone and serve data to the UI.
+This drone app is a C++ program on [Jetson Nano](https://developer.nvidia.com/embedded/jetson-nano-developer-kit). It is used to control the drone and serve data to the UI.
 
 Up to now, it can 
 - load the config
 - capture camera images
 - detect flowers in an image
+- caculate depth map of an image
 - serve data to the UI with auth
 
 ## Build
 ### Dependencies
 
-- gRPC
+- [gRPC](https://github.com/grpc/grpc)
 - CUDA
-- VPI
-- spdlog
+- [VPI](https://docs.nvidia.com/vpi/1.2/index.html)
+- [spdlog](https://github.com/gabime/spdlog)
 - OpenSSL
 - OpenCV
-- yaml-cpp
-- jetson-utils
-- jetson-inference
-- jetson_multimedia_api
+- [yaml-cpp](https://github.com/jbeder/yaml-cpp)
+- [jetson-utils](https://github.com/dusty-nv/jetson-utils)
+- [jetson-inference](https://github.com/dusty-nv/jetson-inference)
+- [jetson_multimedia_api](https://docs.nvidia.com/jetson/l4t-multimedia/index.html)
 
 Run this [script](tools/libraries.sh) to build and install those libraries.
 
@@ -27,28 +28,31 @@ To install jetson-inference and jetson-utils: [jetson-inference](
 https://github.com/dusty-nv/jetson-inference/blob/master/docs/building-repo-2.md)
 
 ### Cmake
-Run this [script](tools/cmake.sh) to install the newer version of Cmake. [Ref](https://forums.developer.nvidia.com/t/having-problems-updating-cmake-on-xavier-nx/169265/2)
+Run this [script](tools/cmake.sh) to install the newer version of Cmake.
 
 ### Model
-Install necessary packages, PyTorch and Torchvision: [NVIDIA Jetson Nano Deployment](https://github.com/ultralytics/yolov5/issues/9627)
-
-Install onnx
+This program uses two models: [yolov5](https://github.com/ultralytics/yolov5) for flowers detection and [MiDaS](https://github.com/isl-org/MiDaS) for depth estimation.
+#### Yolov5
+1. Install necessary packages, PyTorch and Torchvision: [NVIDIA Jetson Nano Deployment](https://github.com/ultralytics/yolov5/issues/9627)
+2. Install onnx
 ```shell
 pip3 install onnx
 ```
-
-Fix bugs in protobuf: copy this [file](https://raw.githubusercontent.com/protocolbuffers/protobuf/main/python/google/protobuf/internal/builder.py) to ~/.local/lib/python3.6/site-packages/google/protobuf/internal/builder.py [Ref](https://stackoverflow.com/a/74089097)
-
-Convert the PyTorch model to ONNX
+3. Fix a [bug]((https://stackoverflow.com/a/74089097)) for protobuf: copy this [file](https://raw.githubusercontent.com/protocolbuffers/protobuf/main/python/google/protobuf/internal/builder.py) to ~/.local/lib/python3.6/site-packages/google/protobuf/internal/builder.py
+4. Convert the Yolov5n PyTorch model to ONNX
 ```shell
 python3 export.py --weights yolov5n_flower.pt --include onnx
 ```
-
-Convert the ONNX to TensorRT with fp16 
+5. Convert the ONNX to TensorRT with fp16 
 ```shell
-/usr/src/tensorrt/bin/trtexec --onnx=/home/jetson/yolov5/yolov5n_flower.onnx --saveEngine=yolov5n_flower.engine —fp16 --workspace=4096
+/usr/src/tensorrt/bin/trtexec --onnx=/home/jetson/yolov5/yolov5n_flower.onnx --saveEngine=yolov5n_flower.engine --fp16 --workspace=4096
 ```
-
+#### MiDaS
+1. Download the [MiDaS v2.1 small ONNX model](https://github.com/isl-org/MiDaS/releases/download/v2_1/model-small.onnx)
+2. Convert the ONNX to TensorRT with fp16 
+```shell
+/usr/src/tensorrt/bin/trtexec --onnx=/home/jetson/model-small.onnx --saveEngine=midas_v21_small.engine --fp16 --workspace=4096
+```
 ## Run
 [Config](tools/config.yaml) is required to run the app. You may also need to create [certificates](/tools/cert/) and [model](/model/).
 
