@@ -175,6 +175,30 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, const CameraRequest *
   return Status::OK;
 }
 
+Status DroneServiceImpl::GetBox(ServerContext *context, const Empty *request, CameraReply *reply) {
+  SPDLOG_INFO("GetBox");
+  // Read Image
+  SPDLOG_TRACE("condition_variable");
+  std::unique_lock lk(cv_m_);
+  cv_.wait(lk, [this] { return ready; });
+  SPDLOG_DEBUG("Strat");
+  // Bounding Box
+  SPDLOG_TRACE("add box");
+  int count = 0;
+  for (int i : detector_.indices[box_index]) {
+    CameraReply_BoundingBox *box = reply->add_box();
+    box->set_left(detector_.boxes[box_index][i].x);
+    box->set_top(detector_.boxes[box_index][i].y);
+    box->set_width(detector_.boxes[box_index][i].width);
+    box->set_height(detector_.boxes[box_index][i].height);
+    box->set_confidence(detector_.confs[box_index][i]);
+    box->set_class_(detector_.class_id[box_index][i]);
+    box->set_depth(detector_.depth[box_index][count++]);
+  }
+  SPDLOG_TRACE("Loop end");
+  return Status::OK;
+}
+
 Status DroneServiceImpl::GetImageSize([[maybe_unused]] ServerContext *context, [[maybe_unused]] const Empty *request, ImageSize *reply) {
   SPDLOG_INFO("GetImageSize");
   reply->set_width(config_["camera"]["width"].as<unsigned int>());

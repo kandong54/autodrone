@@ -7,6 +7,7 @@ service Drone {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
   rpc GetCamera (CameraRequest) returns (stream CameraReply) {}
+  rpc GetBox (Empty) returns (CameraReply) {}
   rpc GetImageSize (Empty) returns (ImageSize) {}
 }
 

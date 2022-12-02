@@ -4,7 +4,7 @@ camera:
   height: 720
   fps: 10
 detector:
-  model_path: ./tools/yolov5n_flower.fp16.engine
+  model_path: ./tools/yolov5n.engine
   input_layer: images
   output_layer: output0
   confidence_threshold: 0.6

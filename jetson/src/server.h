@@ -54,6 +54,7 @@ class DroneServiceImpl final : public Drone::Service {
   ~DroneServiceImpl();
   Status SayHello(ServerContext *context, const HelloRequest *request, HelloReply *reply) override;
   Status GetCamera(ServerContext *context, const CameraRequest *request, ServerWriter<CameraReply> *writer) override;
+  Status GetBox(ServerContext *context, const Empty *request, CameraReply *reply) override;
   Status GetImageSize(ServerContext *context, const Empty *request, ImageSize *reply) override;
   void Run();
   void Wait();
