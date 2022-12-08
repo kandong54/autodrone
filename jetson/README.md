@@ -66,3 +66,6 @@ envoy -c envoy.yaml
 
 ## Setup Jetson
 Booting Jetson Nano from a flash device makes everything smooth: https://github.com/jetsonhacksnano/bootFromUSB
+
+## How to interact with Drone App in Rpi
+[example](../rpi3/README.md)
