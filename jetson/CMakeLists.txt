@@ -19,6 +19,7 @@ include(cmake/nvmpi.cmake)
 # Protos
 add_subdirectory(protos)
 
+# Source code
 add_executable(${CMAKE_PROJECT_NAME} 
   src/main.cc
   src/server.cc
@@ -32,16 +33,19 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
   SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_DEBUG
 )
 
+# include OpenCV and CUDA
 target_include_directories(drone PRIVATE
   src
   ${OpenCV_INCLUDE_DIRS}
   ${CUDA_INCLUDE_DIRS}
 )
 
+# link CUDA
 target_link_directories(drone PRIVATE
   /usr/lib/aarch64-linux-gnu/tegra
 )
 
+# link libraries
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   spdlog::spdlog
   yaml-cpp

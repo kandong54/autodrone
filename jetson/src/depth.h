@@ -19,15 +19,19 @@ class Depth : public tensorNet {
   int camera_height_;
   int rgb_fd_;
   Detector *detector_;
-  EGLImageKHR egl_image_;
-  cudaGraphicsResource *eglResource_;
   float depth_k_;
   float depth_b_; 
   int quality_;
   cv::cuda::GpuMat *map_f32_;
   cv::cuda::GpuMat *map_u8_;
-  
+  // to get the memory address of fd
+  EGLImageKHR egl_image_;
+  cudaGraphicsResource *eglResource_;
+
  public:
+  // 2 buffers for server to read
+  // avoid potential data race
+  // the main thread and server thread will always write/read different buffer
   static const int buffer_num = 2;
   unsigned int buffer_index = 0;
   cv::Mat *map_u8[buffer_num];

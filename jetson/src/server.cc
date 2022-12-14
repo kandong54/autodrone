@@ -22,10 +22,10 @@ using autodrone::CameraReply_BoundingBox;
 namespace jetson {
 namespace {
 // https://github.com/grpc/grpc/blob/master/test/cpp/util/test_credentials_provider.cc
+// read data from a given file. This function is used to read the cert files.
 std::string ReadFile(const std::string &src_path) {
   std::ifstream src;
   src.open(src_path, std::ifstream::in | std::ifstream::binary);
-
   std::string contents;
   src.seekg(0, std::ios::end);
   contents.reserve(src.tellg());
@@ -34,26 +34,30 @@ std::string ReadFile(const std::string &src_path) {
                   (std::istreambuf_iterator<char>()));
   return contents;
 }
+
 // https://github.com/grpc/grpc/blob/master/test/cpp/end2end/end2end_test.cc
 class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
  public:
+  // hash password with salt
   std::string Hash(const std::string &password, const std::string &salt) {
+    // concatenate password and salt
     std::string to_be_hashed = password + salt;
-
+    // init sha256
     const EVP_MD *md_alg = EVP_sha256();
     unsigned int md_len = EVP_MD_size(md_alg);
     unsigned char md_value[md_len];
-
+    // hash
     EVP_Digest(to_be_hashed.c_str(), to_be_hashed.size(),
                md_value, &md_len,
                md_alg, nullptr);
     std::ostringstream hex_stream;
-
+    // convert the resluts to hex format
     for (unsigned int i = 0; i < md_len; i++)
       hex_stream << std::hex << std::setfill('0') << std::setw(2) << (int)md_value[i];
     return hex_stream.str();
   }
 
+  // construction function
   DroneAuthMetadataProcessor(const std::string &password_hashed) {
     token_ = std::string("Bearer ") + password_hashed;
   }
@@ -61,20 +65,24 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
   // Interface implementation
   bool IsBlocking() const override { return false; }
 
+  // auth
   Status Process(const InputMetadata &auth_metadata,
                  [[maybe_unused]] grpc::AuthContext *context,
                  OutputMetadata *consumed_auth_metadata,
                  [[maybe_unused]] OutputMetadata *response_metadata) override {
+    // find the authorization header
     auto auth_md = auth_metadata.find("authorization");
     grpc::string_ref auth_md_value = auth_md->second;
+    // check the password
     if (auth_md_value == token_) {
-      // context->AddProperty(kIdentityPropName, kGoodGuy);
-      // context->SetPeerIdentityPropertyName(kIdentityPropName);
+      // correct
+      // remove this header
       consumed_auth_metadata->insert(std::make_pair(
           std::string(auth_md->first.data(), auth_md->first.length()),
           std::string(auth_md->second.data(), auth_md->second.length())));
       return Status::OK;
     } else {
+      // error
       return Status(grpc::StatusCode::UNAUTHENTICATED, std::string("Invalid password!"));
     }
   }
@@ -85,6 +93,7 @@ class DroneAuthMetadataProcessor : public AuthMetadataProcessor {
 }  // namespace
 
 DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, Detector &detector, Depth &depth, std::mutex &cv_m, std::condition_variable &cv) : config_(config), camera_(camera), detector_(detector), depth_(depth), cv_m_(cv_m), cv_(cv) {
+  // check the cert and key
   std::string server_key_path = config_["server"]["key_path"].as<std::string>();
   std::string server_cert_path = config_["server"]["cert_path"].as<std::string>();
   if (!std::experimental::filesystem::exists(server_key_path)) {
@@ -93,7 +102,7 @@ DroneServiceImpl::DroneServiceImpl(YAML::Node &config, Camera &camera, Detector 
   if (!std::experimental::filesystem::exists(server_cert_path)) {
     SPDLOG_CRITICAL("Server cert does not exist: {}", server_cert_path);
   }
-
+  // init password
   password_hashed_ = config_["server"]["password"].as<std::string>();
   processor_ = std::unique_ptr<DroneAuthMetadataProcessor>(new DroneAuthMetadataProcessor(password_hashed_));
 }
@@ -139,15 +148,18 @@ Status DroneServiceImpl::SayHello([[maybe_unused]] ServerContext *context, const
 }
 
 Status DroneServiceImpl::GetCamera(ServerContext *context, const CameraRequest *request, ServerWriter<CameraReply> *writer) {
+  // server stream, used by UI
   SPDLOG_INFO("GetCamera");
   CameraReply reply;
   bool is_image = request->image();
   while (!context->IsCancelled()) {
-    // Read Image
+    // wait notification
     SPDLOG_TRACE("condition_variable");
     std::unique_lock lk(cv_m_);
     cv_.wait(lk, [this] { return ready; });
+    // start
     SPDLOG_DEBUG("Strat");
+    // load image and depth if client requests them
     if (is_image) {
       SPDLOG_TRACE("set image");
       reply.set_image(camera_.encode_jpeg_list[jpeg_index].start, camera_.encode_jpeg_list[jpeg_index].size);
@@ -176,8 +188,9 @@ Status DroneServiceImpl::GetCamera(ServerContext *context, const CameraRequest *
 }
 
 Status DroneServiceImpl::GetBox(ServerContext *context, const Empty *request, CameraReply *reply) {
+  // no stream, used by rpi
   SPDLOG_INFO("GetBox");
-  // Read Image
+  // wait notification
   SPDLOG_TRACE("condition_variable");
   std::unique_lock lk(cv_m_);
   cv_.wait(lk, [this] { return ready; });

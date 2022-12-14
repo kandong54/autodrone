@@ -18,10 +18,14 @@ class Detector : public tensorNet {
   float conf_threshold_;
   float iou_threshold_;
   int rgb_fd_;
+  // to get the memory address of fd
   EGLImageKHR egl_image_;
   cudaGraphicsResource* eglResource_;
 
  public:
+  // 2 buffers for server to read
+  // avoid potential data race
+  // the main thread and server thread will always write/read different buffer
   static const int buffer_num = 2;
   unsigned int buffer_index = 0;
   std::vector<cv::Rect> boxes[buffer_num];

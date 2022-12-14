@@ -15,7 +15,9 @@ pushd $TMP
 # extract arm64 version bin from docker
 mkdir $TMP
 pushd $TMP
+# download the docker
 docker pull --platform=linux/arm64 envoyproxy/envoy:v$VERSION-latest
+# get the binary file
 docker save envoyproxy/envoy > envoy.tar
 tar -xf envoy.tar
 rm envoy.tar

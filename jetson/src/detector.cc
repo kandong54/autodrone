@@ -10,6 +10,7 @@
 namespace jetson {
 
 Detector::Detector(YAML::Node& config, int input_fd) : tensorNet(), config_(config), rgb_fd_(input_fd) {
+  // save the parameters
   camera_width_ = config_["camera"]["width"].as<int>();
   camera_height_ = config_["camera"]["height"].as<int>();
   model_size_ = config_["detector"]["size"].as<int>();
@@ -21,6 +22,7 @@ int Detector::Init() {
   CreateStream();
   std::vector<std::string> input_blobs = {config_["detector"]["input_layer"].as<std::string>()};
   std::vector<std::string> output_blobs = {config_["detector"]["output_layer"].as<std::string>()};
+  // load model
   if (!LoadEngine(config_["detector"]["model_path"].as<std::string>().c_str(), input_blobs, output_blobs)) {
     SPDLOG_CRITICAL("Failed to LoadEngine");
   }
@@ -28,30 +30,22 @@ int Detector::Init() {
 
 void Detector::Process() {
   SPDLOG_TRACE("Strat");
-  // preProcess
   SPDLOG_TRACE("Read Fd");
+  // get memory address from fd
   egl_image_ = NvEGLImageFromFd(NULL, rgb_fd_);
   if (egl_image_ == NULL)
     SPDLOG_CRITICAL("NvEGLImageFromFd");
   cudaEglFrame eglFrame;
   eglResource_ = NULL;
-  // cudaFree(0);
   if (CUDA_FAILED(cudaGraphicsEGLRegisterImage(&eglResource_, egl_image_,
                                                CU_GRAPHICS_MAP_RESOURCE_FLAGS_NONE)))
     SPDLOG_CRITICAL("cudaGraphicsEGLRegisterImage");
   if (CUDA_FAILED(cudaGraphicsResourceGetMappedEglFrame(&eglFrame, eglResource_, 0, 0)))
     SPDLOG_CRITICAL("cuGraphicsResourceGetMappedEglFrame");
-
   if (eglFrame.frameType != cudaEglFrameTypePitch)
     SPDLOG_CRITICAL("{} != cudaEglFrameTypePitch", eglFrame.frameType);
 
-  //   uchar3 pdata[640][640];
-  //  cudaMemcpy(pdata, rgb_data_, 640*640*3, cudaMemcpyDeviceToHost);
-  //   cv::Mat cvmat3(640, 640, CV_8UC3, pdata);
-  //   cv::Mat rgb;
-  //   cv::cvtColor(cvmat3, rgb, cv::COLOR_RGBA2BGR);
-  //   cv::imwrite("frame.bmp", rgb);
-
+  // preProcess
   // https://github.com/dusty-nv/jetson-inference/blob/master/c/detectNet.cpp
   // https://catalog.ngc.nvidia.com/orgs/nvidia/teams/tao/models/peoplenet
   if (cudaTensorNormRGB((void*)eglFrame.frame.pArray[0], IMAGE_RGBA8, model_size_, model_size_,
@@ -61,6 +55,7 @@ void Detector::Process() {
     SPDLOG_CRITICAL("cudaTensorNormRGB");
 
   SPDLOG_TRACE("ProcessNetwork");
+  // non-block process network
   if (!ProcessNetwork(false))
     SPDLOG_CRITICAL("Failed to ProcessNetwork");
 
@@ -69,6 +64,7 @@ void Detector::Process() {
 
 void Detector::PostProcess() {
   SPDLOG_TRACE("cudaStreamSynchronize");
+  // wait results
   cudaStreamSynchronize(GetStream());
 
   SPDLOG_TRACE("cleanup");
@@ -78,13 +74,17 @@ void Detector::PostProcess() {
 
   // https://github.com/itsnine/yolov5-onnxruntime/blob/master/src/detector.cpp
   SPDLOG_TRACE("Loop");
+  // switch buffer index
   buffer_index = 1 - buffer_index;
+  // clear data
   boxes[buffer_index].clear();
   confs[buffer_index].clear();
   indices[buffer_index].clear();
   class_id[buffer_index].clear();
+  // cpu address of output
   float* output_ptr = mOutputs[0].CPU;
   int nums = mOutputs[0].dims.d[1];
+  // load bounding boxes
   for (int i = 0; i < (int)kArrayLen * nums; i += (int)kArrayLen) {
     // [Cx, Cy, width , height, confidence, class1, class2, ...]
     if (output_ptr[i + kConfidence] >= conf_threshold_) {

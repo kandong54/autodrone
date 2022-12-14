@@ -36,6 +36,9 @@ class Camera {
  public:
   int detector_fd;
   int depth_fd;
+  // 2 buffers for server to read
+  // avoid potential data race
+  // the main thread and server thread will always write/read different buffer
   static const int mjpeg_num = 2;
   nv_buffer encode_jpeg_list[mjpeg_num];
   unsigned int encode_index = 0;

@@ -22,9 +22,8 @@ Camera::Camera(YAML::Node& config) : config_(config) {
   memset(encode_jpeg_list, 0, mjpeg_num * sizeof(nv_buffer));
   const int camera_width = config_["camera"]["width"].as<unsigned int>();
   const int camera_height = config_["camera"]["height"].as<unsigned int>();
-  // how to set the maximal size?
+  // how to set the maximal size of jpeg
   encode_jpeg_max_size_ = camera_width * camera_height * 3;
-  //encode_quality_ = config_["camera"]["quality"].as<unsigned int>();
 }
 
 int Camera::Open() {
@@ -51,6 +50,7 @@ int Camera::Open() {
 
   // init_device
   struct v4l2_capability cap;
+  // output supported mode
   ioctl(cam_fd_, VIDIOC_QUERYCAP, &cap);
   if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)
     SPDLOG_INFO("V4L2_CAP_VIDEO_CAPTURE");
@@ -65,29 +65,30 @@ int Camera::Open() {
   struct v4l2_format fmt;
   memset(&fmt, 0, sizeof(fmt));
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  // set format
   // v4l2-ctl --list-formats-ext
   fmt.fmt.pix.width = camera_width;
   fmt.fmt.pix.height = camera_height;
+  // jpeg
   fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
   fmt.fmt.pix.field = V4L2_FIELD_ANY;
   if (0 != ioctl(cam_fd_, VIDIOC_S_FMT, &fmt))
     SPDLOG_CRITICAL("VIDIOC_S_FMT");
   SPDLOG_INFO("{},{} sizeimage: {}", fmt.fmt.pix.width, fmt.fmt.pix.height, fmt.fmt.pix.sizeimage);
 
-  // fps
+  // set fps
   struct v4l2_streamparm streamparm;
   memset(&streamparm, 0, sizeof(struct v4l2_streamparm));
   streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   streamparm.parm.capture.timeperframe.numerator = 1;
   streamparm.parm.capture.timeperframe.denominator = config_["camera"]["fps"].as<unsigned int>();
-  ;
   if (0 != ioctl(cam_fd_, VIDIOC_G_PARM, &streamparm))
     SPDLOG_CRITICAL("VIDIOC_G_PARM");
   SPDLOG_INFO("FPS: {} / {}",
               streamparm.parm.capture.timeperframe.denominator,
               streamparm.parm.capture.timeperframe.numerator);
 
-  // mmap instead of dmabuf
+  // using mmap instead of dmabuf
   struct v4l2_requestbuffers reqbuf;
   memset(&reqbuf, 0, sizeof(reqbuf));
   reqbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -101,7 +102,7 @@ int Camera::Open() {
   for (size_t i = 0; i < mjpeg_num; i++) {
     encode_jpeg_list[i].start = (unsigned char*)malloc(encode_jpeg_max_size_);
   }
-  // detector_fd & depth_fd
+  // init detector_fd & depth_fd
   NvBufferCreateParams input_params = {0};
   input_params.payloadType = NvBufferPayload_SurfArray;
   input_params.width = model_size;
@@ -115,12 +116,13 @@ int Camera::Open() {
   input_params.height = depth_size;
   if (0 != NvBufferCreateEx(&depth_fd, &input_params))
     SPDLOG_CRITICAL("NvBufferCreateEx");
+
   // NvBufferTransformParams, FILTER & CROP
   memset(&transform_params_, 0, sizeof(NvBufferTransformParams));
   transform_params_.transform_flag = NVBUFFER_TRANSFORM_FILTER;
   transform_params_.transform_filter = NvBufferTransform_Filter_Nicest;
 
-  // queue buff
+  // queue buff in v4l2
   struct v4l2_buffer buf;
   memset(&buf, 0, sizeof(buf));
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -129,6 +131,7 @@ int Camera::Open() {
   if (ioctl(cam_fd_, VIDIOC_QUERYBUF, &buf) < 0)
     SPDLOG_CRITICAL("VIDIOC_QUERYBUF");
   capture_buffer_.size = buf.length;
+  // mmap
   capture_buffer_.start = (unsigned char*)mmap(NULL /* start anywhere */,
                                                buf.length, PROT_READ | PROT_WRITE /* required */,
                                                MAP_SHARED /* recommended */,
@@ -145,7 +148,7 @@ int Camera::Open() {
     SPDLOG_CRITICAL("VIDIOC_STREAMON");
 
   // warm up
-  usleep(1000000);  // wait for hardware?
+  usleep(1000000);  // wait for hardware
   Capture();
   Encode();
   return 0;
@@ -153,7 +156,7 @@ int Camera::Open() {
 
 int Camera::Capture() {
   SPDLOG_DEBUG("Strat");
-
+  // poll event
   struct pollfd fds[1];
   fds[0].fd = cam_fd_;
   fds[0].events = POLLIN;
@@ -186,28 +189,35 @@ int Camera::Capture() {
     bytesused--;
   }
 
-  // workaround for YUV422
   SPDLOG_TRACE("Encode");
+  // switch buffer index
   encode_index = 1 - encode_index;
   encode_jpeg_list[encode_index].size = bytesused;
+  // copy the jpeg in to buffer
+  // I don't need to encode it, since the data from camera is already jpeg
   memcpy(encode_jpeg_list[encode_index].start, capture_buffer_.start, bytesused);
 
+  // decode jpeg
   SPDLOG_TRACE("decodeToFd");
   uint32_t width, height, pixfmt;
   int ret = jpegdec_->decodeToFd(capture_buffer_.dmabuff_fd, capture_buffer_.start, bytesused, pixfmt, width, height);
   if (ret < 0)
     SPDLOG_CRITICAL("decodeToFd");
+  // check the format
   if (pixfmt != V4L2_PIX_FMT_YUV422M)
     SPDLOG_WARN("pixfmt != V4L2_PIX_FMT_YUV422M");
 
-  SPDLOG_TRACE("NvBufferTransform");  // YUV422 -> rgba
+  // convert YUV422 -> rgba
+  SPDLOG_TRACE("NvBufferTransform"); 
   if (0 != NvBufferTransform(capture_buffer_.dmabuff_fd, detector_fd, &transform_params_))
     SPDLOG_CRITICAL("Failed to convert the buffer");
 
-  SPDLOG_TRACE("NvBufferTransform");  // detector -> depth
+  // convert size, detector size -> depth size
+  SPDLOG_TRACE("NvBufferTransform");  
   if (0 != NvBufferTransform(detector_fd, depth_fd, &transform_params_))
     SPDLOG_CRITICAL("Failed to convert the buffer");
 
+  // queue the buffer again
   SPDLOG_TRACE("VIDIOC_QBUF");
   if (0 != ioctl(cam_fd_, VIDIOC_QBUF, &v4l2_buf))
     SPDLOG_CRITICAL("VIDIOC_QBUF");
@@ -215,6 +225,7 @@ int Camera::Capture() {
   return 0;
 }
 
+// I don't need to encode images, since the data from camera is already jpeg
 int Camera::Encode() {
   // SPDLOG_TRACE("Strat");
   // SPDLOG_TRACE("Encode");

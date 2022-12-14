@@ -38,13 +38,17 @@ class DroneServiceImpl final : public Drone::Service {
   Detector &detector_;
   Depth &depth_;
   std::unique_ptr<Server> server_;
+  // auth
   std::unique_ptr<AuthMetadataProcessor> processor_;
   std::string password_hashed_;
+  // sync
   std::condition_variable &cv_;
   std::mutex &cv_m_;
 
  public:
   bool ready = false;
+  // buffer index
+  // this class will read the data in other classes' buffer
   unsigned int jpeg_index = 0;
   unsigned int box_index = 0;
   unsigned int depth_index = 0;

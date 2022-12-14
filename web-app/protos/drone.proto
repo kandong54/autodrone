@@ -2,7 +2,8 @@ syntax = "proto3";
 
 package autodrone;
 
-// The greeting service definition.
+// The drone service definition.
+// Modified from https://github.com/grpc/grpc-web/blob/master/net/grpc/gateway/examples/helloworld/helloworld.proto
 service Drone {
   // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply) {}
@@ -22,6 +23,7 @@ message HelloReply {
 }
 
 message CameraRequest {
+  // request image?
   bool image = 1;
 }
 

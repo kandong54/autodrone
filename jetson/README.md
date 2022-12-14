@@ -69,3 +69,6 @@ Booting Jetson Nano from a flash device makes everything smooth: https://github.
 
 ## How to interact with Drone App in Rpi
 [example](../rpi3/README.md)
+
+## Dataflow
+![Dataflow](./img/Dataflow.svg)

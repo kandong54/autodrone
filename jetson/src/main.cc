@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   depth.Init();
 
   /*
-   * Concurrency
+   * Synchronization
    */
   std::condition_variable cv;
   std::mutex cv_m_;
@@ -57,6 +57,7 @@ int main(int argc, char* argv[]) {
    * gRPC
    */
   jetson::DroneServiceImpl server(config, camera, detector, depth, cv_m_, cv);
+  // the server is running on a different thread, so synchronization is required.
   server.Run();
   // server.Wait();
 
@@ -66,20 +67,27 @@ int main(int argc, char* argv[]) {
 
   while (true) {
     SPDLOG_TRACE("*** Strat ***");
+    // capture camera
     camera.Capture();
-    // camera.Encode();
+    // start detecting flowers
     detector.Process();
+    // start estimating depth
     depth.Process();
+    // wait resluts and post-process bounding boxes
     detector.PostProcess();
+    // wait resluts and post-process depth
     depth.PostProcess();
     SPDLOG_TRACE("notify_all");
     {
+      // change the buffer index in server
+      // lock is necessary to avoid data race
       std::lock_guard lk(cv_m_);
       server.ready = true;
       server.jpeg_index = camera.encode_index;
       server.box_index = detector.buffer_index;
             server.depth_index = depth.buffer_index;
     }
+    // notify server
     cv.notify_all();
     SPDLOG_TRACE("*** End ***");
   }

@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "atomic": "cpp",
+        "condition_variable": "cpp",
+        "ios": "cpp"
+    }
+}
